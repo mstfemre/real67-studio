@@ -1,6 +1,6 @@
 # Real67 Studio
 
-MelGeek **Real67** klavye için gayriresmî ışık kontrol uygulaması. Klavyenin kendi RGB modları az ve sınırlı olduğu için yazıldı: 20 canlı efekt, 15 renk paleti ve ortam (mood) ışığı ayarı sunar.
+MelGeek **Real67** klavye için gayriresmî ışık kontrol uygulaması. Klavyenin kendi RGB modları az ve sınırlı olduğu için yazıldı: 26 canlı efekt, 30 renk paleti ve ortam (mood) ışığı ayarı sunar.
 
 Efektleri arka planda çalışan küçük bir servis oynatır. Tarayıcıyı kapatsanız da ışıklar akmaya devam eder, bilgisayar yeniden açıldığında kaldığı yerden sürer.
 
@@ -29,8 +29,10 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 
 ## Özellikler
 
-- **20 canlı efekt**, hepsinde hız ve parlaklık ayarı
-- **15 renk paleti**; palet kullanan her efektte seçilebilir
+- **26 canlı efekt**, hepsinde parlaklık ayarı
+- **Tuşa tepki veren efektler** (Halkalar, Tuş izi, Yazma akışı, Havai fişek): hangi programda yazarsanız yazın çalışır
+- **30 renk paleti**; palet kullanan her efektte seçilebilir
+- **Favoriler** ve **kısayol tuşları** (Ctrl+Alt+oklar)
 - **Ortam ışığı:** renk, mod, hız, parlaklık ve efektin rengine göre otomatik renk
 - **Tarayıcısız çalışma:** efekt arka planda sürer
 - **Otomatik başlatma:** Windows açılışında son efekt kendiliğinden başlar
@@ -52,7 +54,7 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 | Radar | Merkez etrafında dönen tarama ışını |
 | Kayan gradyan | Seçtiğiniz üç renk yatay olarak akar |
 | Kuyruklu yıldız | Sıralar boyunca kayan yıldızlar ve izleri |
-| Halkalar | Bastığınız tuştan yayılan su halkaları (hangi programda yazarsanız yazın) |
+| Halkalar | Bastığınız tuştan yayılan su halkaları; basmadıkça klavye karanlıktır |
 | Tuş izi | Bastığınız tuş yanar ve yavaşça söner |
 | Yazma akışı | Yazdıkça hızlanan ve parlayan, durunca yavaşlayan renk akışı |
 | Havai fişek | Bastığınız tuştan çevreye kıvılcımlar saçılır |
@@ -153,4 +155,5 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 - Yalnızca Windows içindir (başlatma betikleri ve kısayollar).
 - Efektler bilgisayardan gönderildiği için servis çalışmıyorken oynamaz; firmware özel animasyon saklayamaz.
 - Ortam ışığı için firmware yalnızca 8 hazır rengi kabul eder.
+- Windows kilit ekranındayken tuş basışları ve kısayollar algılanmaz.
 - MelGeek ile bağlantısı olmayan, kişisel bir projedir.

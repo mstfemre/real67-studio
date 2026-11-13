@@ -502,7 +502,10 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   // Yalnızca bu bilgisayardan, bu adrese yapılan istekler (başka sitelerin localhost'a erişimini engeller)
   if (!HOSTS.has(req.headers.host || '')) return json(res, 403, { error: 'Geçersiz adres' });
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  // Bozuk adres (ör. "/%zz") URIError fırlatır; yakalanmazsa async işleyicide servisi düşürür.
+  let url, p;
+  try { url = new URL(req.url, `http://${req.headers.host}`); p = decodeURIComponent(url.pathname); }
+  catch { return json(res, 400, { error: 'Geçersiz adres' }); }
 
   if (url.pathname.startsWith('/api/')) {
     try {
@@ -524,7 +527,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  let p = decodeURIComponent(url.pathname);
   if (p === '/') p = '/index.html';
   if (!(p === '/index.html' || p === '/styles.css' || /^\/js\/[\w.-]+\.js$/.test(p))) return json(res, 404, { error: 'Bulunamadı' });
   fs.readFile(path.join(WEB_DIR, p), (err, buf) => {
@@ -541,7 +543,7 @@ server.on('error', (e) => {
 });
 server.listen(PORT, '127.0.0.1', () => {
   log(`Real67 Studio: http://localhost:${PORT}/  (kapatmak için Ctrl+C)`);
-  if (!keysAvailable()) log('Tuş basışları algılanamıyor (koffi kurulu değil): Halkalar tepkisiz kalır. kur.bat ile yeniden kurun.');
+  if (!keysAvailable()) log('Tuş basışları algılanamıyor (koffi kurulu değil): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. kur.bat ile yeniden kurun.');
   if (persisted.playing) {
     try { play(persisted.playing, 'service'); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
     catch (e) { persisted.playing = null; persist(); log('Kayıtlı efekt yüklenemedi:', e.message); }
