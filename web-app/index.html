@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real67 Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='16' rx='3' fill='%23c7c9cc'/%3E%3Crect x='7' y='12' width='5' height='4' rx='1' fill='%23ff3df2'/%3E%3Crect x='14' y='12' width='5' height='4' rx='1' fill='%2300e1ff'/%3E%3Crect x='21' y='12' width='5' height='4' rx='1' fill='%23ffd23f'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+  <header class="bar">
+    <div class="conn">
+      <span class="status" id="status" data-state="off"><i></i><span id="statusText">Bağlı değil</span></span>
+      <button class="btn primary" id="connectBtn">Klavyeyi bağla</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Klavye önizlemesi">
+      <div class="case" id="case">
+        <div class="plate" id="board"></div>
+        <div class="underglow" id="underglow"></div>
+      </div>
+      <p class="stage-note" id="stageNote" hidden></p>
+    </section>
+
+    <!-- CANLI EFEKTLER + ORTAM IŞIĞI (tek ekran) -->
+    <section class="panel" data-panel="live">
+      <div class="fx-main">
+        <div class="fx-list" id="fxList" role="listbox" aria-label="Efektler"></div>
+
+        <div class="group mood-card">
+          <label class="mood-head">
+            <h3>Ortam ışığı</h3>
+            <input type="checkbox" id="moodOn" checked aria-label="Ortam ışığı açık" />
+          </label>
+
+          <div class="mood-row">
+            <span class="mood-label">Renk</span>
+            <div class="dots" id="moodColorChips"></div>
+          </div>
+          <div class="mood-row">
+            <span class="mood-label">Hareket</span>
+            <div class="seg" id="moodModeChips"></div>
+          </div>
+          <label class="field"><span>Parlaklık</span><input type="range" id="mdBright" min="0" max="100" /><output id="mdBrightOut"></output></label>
+          <label class="field"><span>Hız</span><input type="range" id="mdSpeed" min="0" max="100" /><output id="mdSpeedOut"></output></label>
+
+          <div class="mood-row mood-auto">
+            <span class="mood-label">Renk değişimi</span>
+            <div class="seg" id="moodAutoChips">
+              <button class="chip" data-auto="off">Yok</button>
+              <button class="chip" data-auto="cycle">Sırayla</button>
+              <button class="chip" data-auto="follow">Tuşlara göre</button>
+            </div>
+          </div>
+          <div id="moodCycleBox" hidden>
+            <div class="mood-row">
+              <span class="mood-label">Renkler</span>
+              <div class="dots" id="moodCycleColors"></div>
+            </div>
+            <label class="field"><span>Aralık</span><input type="range" id="moodInterval" min="1" max="30" step="1" /><output id="moodIntervalOut"></output></label>
+            <label class="field check"><span>Rastgele sıra</span><input type="checkbox" id="moodShuffle" /></label>
+          </div>
+          <div id="moodFollowBox" hidden>
+            <label class="field"><span>Bölge</span>
+              <select id="moodRegion">
+                <option value="all">Tüm klavye</option>
+                <option value="left">Sol kenar</option>
+                <option value="center">Orta</option>
+                <option value="right">Sağ kenar</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint" id="moodAutoHint"></p>
+        </div>
+      </div>
+      <div class="fx-side">
+        <div class="group now-playing" id="nowPlaying" data-on="false">
+          <i aria-hidden="true"></i>
+          <span id="nowText">Bir efekte tıkla; klavyede hemen oynar.</span>
+        </div>
+        <div class="group">
+          <h3 id="fxTitle">Efekt</h3>
+          <p class="hint" id="fxHint"></p>
+          <div class="params" id="fxParams"></div>
+        </div>
+        <!-- Genel ayarlar arayüzden kaldırıldı; değerleri (parlaklık, kare hızı, gama) kayıtlı hâliyle kullanılıyor -->
+        <div class="group" hidden>
+          <h3>Genel</h3>
+          <label class="field"><span>Parlaklık</span><input type="range" id="master" min="0" max="100" value="100" /><output id="masterOut">100%</output></label>
+          <label class="field"><span>Kare hızı</span>
+            <select id="fps"><option value="20">20</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option></select>
+          </label>
+          <label class="field check"><input type="checkbox" id="gamma" checked /><span>Gama düzeltmesi (koyu tonlar daha doğru)</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- TUŞ BOYAMA -->
+    <section class="panel" data-panel="paint" hidden>
+      <div class="paint-tools">
+        <div class="group">
+          <h3>Renk slotu</h3>
+          <div class="chips" id="slotChips"></div>
+          <p class="hint" id="slotHint"></p>
+          <div class="row">
+            <button class="btn" id="readSlotBtn">Klavyeden oku</button>
+            <button class="btn" id="activateSlotBtn">Bu slotu kullan</button>
+          </div>
+        </div>
+        <div class="group">
+          <h3>Fırça</h3>
+          <div class="chips" id="toolChips">
+            <button class="chip" data-tool="brush" aria-pressed="true">Boya</button>
+            <button class="chip" data-tool="pick" aria-pressed="false">Renk al</button>
+            <button class="chip" data-tool="erase" aria-pressed="false">Söndür</button>
+          </div>
+          <label class="field"><span>Renk</span><input type="color" id="paintColor" value="#ff3df2" /></label>
+          <div class="swatches" id="swatches"></div>
+          <p class="hint">Tuşlara tıkla ya da basılı tutup sürükle.</p>
+        </div>
+        <div class="group">
+          <h3>Tümüne uygula</h3>
+          <div class="row">
+            <button class="btn" id="fillBtn">Hepsini boya</button>
+            <button class="btn" id="gradBtn">Gradyan</button>
+            <button class="btn" id="rainbowBtn">Gökkuşağı</button>
+          </div>
+          <label class="field"><span>Gradyan bitişi</span><input type="color" id="gradEnd" value="#00e1ff" /></label>
+          <div class="row">
+            <button class="btn" id="undoBtn">Geri al</button>
+            <button class="btn" id="exportBtn">Dışa aktar</button>
+            <label class="btn file">İçe aktar<input type="file" id="importFile" accept="application/json" /></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KLAVYE MODLARI -->
+    <section class="panel" data-panel="modes" hidden>
+      <div class="group wide">
+        <h3>Klavyeye kaydet</h3>
+        <p class="hint">Burada seçtiğin ışık klavyenin kendi belleğine yazılır: tarayıcı kapalıyken, başka bir bilgisayarda ve klavyeyi yeniden taktığında da çalışır. Yalnızca ışık komutları gönderilir; tuş atamaların ve rapid trigger ayarların değişmez.</p>
+        <div class="recipe">
+          <div>
+            <h4>Hareket</h4>
+            <div class="chips" id="keyModeChips"></div>
+            <p class="hint" id="motionHint"></p>
+          </div>
+          <div id="palBox">
+            <h4>Renkler</h4>
+            <div class="chips" id="palChips"></div>
+            <div class="strips" id="palStrips"></div>
+            <label class="field" id="palColorField"><span>Renk</span><input type="color" id="palColor" value="#ff3df2" /></label>
+            <label class="field" id="palDirField"><span>Renk yönü</span>
+              <select id="palDir">
+                <option value="x">Soldan sağa</option>
+                <option value="y">Yukarıdan aşağı</option>
+                <option value="d">Çapraz</option>
+                <option value="c">Merkezden dışa</option>
+              </select>
+            </label>
+            <label class="field" id="saveSlotField"><span>Kayıt yeri</span><select id="saveSlot"></select></label>
+          </div>
+        </div>
+        <div class="run">
+          <button class="btn big" id="saveKbBtn" disabled>Klavyeye kaydet</button>
+          <span class="run-meta" id="saveKbNote">Önizleme yukarıda. Kaydedene kadar klavye değişmez.</span>
+        </div>
+      </div>
+      <div class="group">
+        <h3 id="modeParamTitle">Mod ayarları</h3>
+        <label class="field"><span>Parlaklık</span><input type="range" id="kmBright" min="0" max="100" /><output id="kmBrightOut"></output></label>
+        <label class="field"><span>Hız</span><input type="range" id="kmSpeed" min="0" max="100" /><output id="kmSpeedOut"></output></label>
+        <label class="field check"><input type="checkbox" id="kmRandom" /><span>Rastgele renk (seçtiğin renkler yerine)</span></label>
+        <p class="hint">Bu üç ayar, klavyede şu an etkin olan moda anında uygulanır ve klavyede saklanır.</p>
+      </div>
+      <div class="group">
+        <h3>Arka ışık</h3>
+        <label class="field check"><input type="checkbox" id="blOn" checked /><span>Arka ışık açık</span></label>
+      </div>
+    </section>
+
+    <!-- GÜNLÜK -->
+    <section class="panel" data-panel="log" hidden>
+      <div class="group wide">
+        <h3>Paket günlüğü</h3>
+        <label class="field check"><input type="checkbox" id="logOn" /><span>Paketleri kaydet (canlı efekt sırasında çok hızlı dolar)</span></label>
+        <pre class="log" id="log"></pre>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# bağımlılıklar: kur.bat yeniden kurar
+node_modules/
+
+# bu bilgisayara özel çalışma durumu ve günlük
+service/state.json
+service/servis.log
+*.log
+
+# editör / araç ayarları
+.claude/
+.vscode/
