@@ -65,6 +65,20 @@ const PALETTES = {
   morotesi: ['#ff0090', '#8a00c8', '#4a00d0', '#6a00e6', '#a000ff', '#d800c8'].map(hexToRgb),
   tamspektrum: ['#d400ff', '#0020ff', '#00e5ff', '#00ff3c', '#fff200', '#ff8a00', '#ff1a1a'].map(hexToRgb),
   beyazsiyah: ['#ffffff', '#000000'].map(hexToRgb),
+  buzul: ['#ffffff', '#9ffcff', '#00b3ff', '#0033cc', '#00b3ff', '#9ffcff'].map(hexToRgb),
+  altin: ['#1a0f00', '#b8860b', '#ffd700', '#fff3b0', '#ffd700', '#b8860b'].map(hexToRgb),
+  sakura: ['#ffe4ec', '#ffb7c5', '#ff6f91', '#ff2d6f', '#ff6f91', '#ffb7c5'].map(hexToRgb),
+  atesbuz: ['#ff3000', '#ff9000', '#7a00ff', '#00c8ff', '#0030ff', '#7a00ff'].map(hexToRgb),
+  zumrut: ['#002b1f', '#00a86b', '#50ffb0', '#00a86b'].map(hexToRgb),
+  nebula: ['#0b0033', '#4b0082', '#ff00aa', '#00d4ff', '#4b0082'].map(hexToRgb),
+  lagun: ['#003b46', '#07757b', '#00c2c7', '#66fcf1', '#00c2c7'].map(hexToRgb),
+  zehir: ['#39ff14', '#00ff9c', '#b000ff', '#ff00e6', '#b000ff'].map(hexToRgb),
+  bakir: ['#2b0e00', '#b45309', '#ff7f3f', '#ffc48a', '#ff7f3f', '#b45309'].map(hexToRgb),
+  vapor: ['#ff71ce', '#b967ff', '#01cdfe', '#05ffa1', '#01cdfe', '#b967ff'].map(hexToRgb),
+  yesilkod: ['#000000', '#003b00', '#00ff41', '#b6ffb6', '#00ff41', '#003b00'].map(hexToRgb),
+  seker: ['#ff4d6d', '#ffd60a', '#4cc9f0', '#7209b7'].map(hexToRgb),
+  kraliyet: ['#0a0a3d', '#1f1fbf', '#ffd700', '#1f1fbf'].map(hexToRgb),
+  tropik: ['#ff6b35', '#f7c548', '#00d9a3', '#00a6ed', '#00d9a3', '#f7c548'].map(hexToRgb),
 };
 export const PALETTE_OPTS = [
   // Görünen adlar İngilizce (kullanıcının isteği); kimlikler (ilk sütun) kayıtlı ayarlarda geçtiği için değişmez.
@@ -72,7 +86,10 @@ export const PALETTE_OPTS = [
   ['orman', 'Venom'], ['lav', 'Magma'], ['siber', 'Cyberpunk'],
   ['kizil', 'Bloodmoon'], ['mavikizil', 'Synthwave'], ['gece', 'Eclipse'], ['seftali', 'Solar Flare'],
   ['limonbuz', 'Mojito'], ['saripembe', 'Miami Vice'], ['morotesi', 'Ultraviolet'], ['tamspektrum', 'Hyperspace'],
-  ['beyazsiyah', 'Noir'],
+  ['beyazsiyah', 'Noir'], ['buzul', 'Glacier'], ['altin', 'Midas'], ['sakura', 'Sakura'],
+  ['atesbuz', 'Fire & Ice'], ['zumrut', 'Emerald'], ['nebula', 'Nebula'],
+  ['lagun', 'Lagoon'], ['zehir', 'Toxic'], ['bakir', 'Copper'], ['vapor', 'Vaporwave'],
+  ['yesilkod', 'Mainframe'], ['seker', 'Candy Pop'], ['kraliyet', 'Royale'], ['tropik', 'Tropicana'],
 ];
 export function paletteCss(name) {
   const stops = [];
