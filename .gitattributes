@@ -1,0 +1,4 @@
+# Windows betikleri CRLF olmalı (ZIP olarak indirildiğinde de): LF ile "goto" etiketleri bozulabilir
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.ico binary
