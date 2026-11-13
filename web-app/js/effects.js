@@ -64,6 +64,7 @@ const PALETTES = {
   saripembe: ['#ffe100', '#ff7a6a', '#ff00d4', '#ff7a6a'].map(hexToRgb),
   morotesi: ['#ff0090', '#8a00c8', '#4a00d0', '#6a00e6', '#a000ff', '#d800c8'].map(hexToRgb),
   tamspektrum: ['#d400ff', '#0020ff', '#00e5ff', '#00ff3c', '#fff200', '#ff8a00', '#ff1a1a'].map(hexToRgb),
+  beyazsiyah: ['#ffffff', '#000000'].map(hexToRgb),
 };
 export const PALETTE_OPTS = [
   // Görünen adlar İngilizce (kullanıcının isteği); kimlikler (ilk sütun) kayıtlı ayarlarda geçtiği için değişmez.
@@ -71,6 +72,7 @@ export const PALETTE_OPTS = [
   ['orman', 'Venom'], ['lav', 'Magma'], ['siber', 'Cyberpunk'],
   ['kizil', 'Bloodmoon'], ['mavikizil', 'Synthwave'], ['gece', 'Eclipse'], ['seftali', 'Solar Flare'],
   ['limonbuz', 'Mojito'], ['saripembe', 'Miami Vice'], ['morotesi', 'Ultraviolet'], ['tamspektrum', 'Hyperspace'],
+  ['beyazsiyah', 'Noir'],
 ];
 export function paletteCss(name) {
   const stops = [];
