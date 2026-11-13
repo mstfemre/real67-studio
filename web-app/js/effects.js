@@ -321,14 +321,12 @@ export const EFFECTS = [
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 2, max: 24, step: 0.5, def: 10 },
       { key: 'width', label: 'Halka kalınlığı', type: 'range', min: 0.8, max: 3, step: 0.1, def: 1.6 },
-      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 30, unit: '%' },
       { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'okyanus' },
     ],
     init(s) { s.drops = []; s.hue = Math.random(); },
     frame({ dt, p, out, s, presses }) {
       // Her basış, basılan tuşun yerinden bir halka başlatır: kalın, yumuşak kenarlı, arkasından
-      // zayıf ikinci bir tepe gelir. Zemin, paletin arayüzdeki şeritte görünen deseninin aynısıdır
-      // (soldan sağa tüm palet), yalnızca daha loş; yazmayınca sakin kalır.
+      // zayıf ikinci bir tepe gelir. Zemin ışığı yoktur (kullanıcının isteği): yazmayınca klavye karanlıktır.
       const MAXR = 19, w = p.width; // klavyenin köşegeni ~17u: halka her tuştan karşı kenara ulaşır
       for (const k of presses) {
         s.hue = fract(s.hue + 0.381966); // art arda basışlar paletin farklı yerlerinden renk alır
@@ -338,7 +336,6 @@ export const EFFECTS = [
       if (s.drops.length > 32) s.drops.splice(0, s.drops.length - 32);
       for (const d of s.drops) d.r += p.speed * dt;
       s.drops = s.drops.filter((d) => d.r < MAXR);
-      const lvl = p.base / 100;
       for (const k of KEYS) {
         // Üst üste binen halkalar renkleri TOPLAMAZ (toplanınca her kanal dolup beyaza dönüyordu):
         // tuşun rengini o anda en güçlü olan halka belirler (v^12 ağırlık: neredeyse "kazanan alır",
@@ -353,8 +350,7 @@ export const EFFECTS = [
           const wt = Math.pow(v, 12);
           r += d.col[0] * wt; g += d.col[1] * wt; b += d.col[2] * wt; wsum += wt; dark *= 1 - v;
         }
-        const base = pal(p.palette, k.cx / WIDTH_U), keep = lvl * dark, hit = wsum ? (1 - dark) / wsum : 0;
-        put(out, k.i, [base[0] * keep + r * hit, base[1] * keep + g * hit, base[2] * keep + b * hit]);
+        put(out, k.i, [r, g, b], wsum ? (1 - dark) / wsum : 0);
       }
     },
   },
@@ -364,14 +360,13 @@ export const EFFECTS = [
     params: [
       { key: 'fade', label: 'Solma süresi', type: 'range', min: 0.3, max: 4, step: 0.1, def: 1.4, unit: ' sn' },
       { key: 'spread', label: 'Yayılma', type: 'range', min: 0, max: 100, step: 1, def: 35, unit: '%' },
-      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 25, unit: '%' },
       { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'morotesi' },
     ],
     init(s) { s.v = new Float32Array(N); },
     frame({ dt, p, out, s, presses }) {
-      // Her tuşun rengi zeminle aynı desenden gelir (paletin o konumdaki rengi), yalnızca tam parlak.
+      // Her tuşun rengi paletin o konumdaki rengidir (soldan sağa tüm palet), tam parlak.
       // Basılan tuş tam yanar, komşuları "Yayılma" oranında; sonra hepsi aynı hızla söner.
-      // Renkler toplanmaz (zemin ile ışık arasında geçiş), bu yüzden hızlı yazınca beyaza dönmez.
+      // Zemin ışığı yoktur (kullanıcının isteği). Renkler toplanmaz, bu yüzden hızlı yazınca beyaza dönmez.
       const spread = p.spread / 100;
       for (const k of presses) {
         s.v[k.i] = 1;
@@ -383,12 +378,10 @@ export const EFFECTS = [
       // Doğrusal söner: çıkışa gama uygulandığı için göze de düzgün söner gibi görünür
       // (üstel sönme gama ile ilk yarım saniyede kaybolur, "Solma süresi" anlamını yitirir).
       const step = dt / p.fade;
-      const lvl = p.base / 100;
       for (const k of KEYS) {
         const v = (s.v[k.i] = Math.max(0, Math.min(1, s.v[k.i]) - step));
         const c = pal(p.palette, k.cx / WIDTH_U), mx = Math.max(c[0], c[1], c[2], 0.001);
-        const keep = lvl * (1 - v);
-        put(out, k.i, [c[0] * keep + (c[0] / mx) * v, c[1] * keep + (c[1] / mx) * v, c[2] * keep + (c[2] / mx) * v]);
+        put(out, k.i, c, v / mx);
       }
     },
   },
@@ -398,7 +391,7 @@ export const EFFECTS = [
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 0.5, step: 0.01, def: 0.06 },
       { key: 'boost', label: 'Hızlanma', type: 'range', min: 0, max: 100, step: 1, def: 50, unit: '%' },
-      { key: 'idle', label: 'Boşta parlaklık', type: 'range', min: 10, max: 100, step: 1, def: 45, unit: '%' },
+      { key: 'idle', label: 'Boşta parlaklık', type: 'range', min: 0, max: 100, step: 1, def: 45, unit: '%' },
       { key: 'scale', label: 'Bant genişliği', type: 'range', min: 0.3, max: 3, step: 0.05, def: 1 },
       { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'tamspektrum' },
     ],
@@ -428,14 +421,12 @@ export const EFFECTS = [
       { key: 'speed', label: 'Hız', type: 'range', min: 3, max: 20, step: 0.5, def: 9 },
       { key: 'count', label: 'Kıvılcım sayısı', type: 'range', min: 4, max: 14, step: 1, def: 8 },
       { key: 'life', label: 'Ömür', type: 'range', min: 0.4, max: 2.5, step: 0.1, def: 1.1, unit: ' sn' },
-      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 20, unit: '%' },
       { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'tamspektrum' },
     ],
     init(s) { s.sparks = []; s.hue = Math.random(); },
     frame({ dt, p, out, s, presses }) {
       // Her basış, tuşun yerinden çevreye saçılan kıvılcımlar çıkarır; kıvılcımlar yavaşlayarak
-      // ilerler ve doğrusal söner. Kendiliğinden patlama yoktur. Zemin Halkalar'daki gibidir
-      // (paletin soldan sağa deseni, loş).
+      // ilerler ve doğrusal söner. Kendiliğinden patlama ve zemin ışığı yoktur.
       for (const k of presses) {
         s.hue = fract(s.hue + 0.381966); // art arda basışlar paletin farklı yerlerinden renk alır
         const a0 = Math.random() * Math.PI * 2;
@@ -451,7 +442,6 @@ export const EFFECTS = [
       const drag = Math.pow(0.12, dt);
       for (const q of s.sparks) { q.age += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= drag; q.vy *= drag; }
       s.sparks = s.sparks.filter((q) => q.age < p.life);
-      const lvl = p.base / 100;
       for (const k of KEYS) {
         // Renkler toplanmaz (Halkalar'daki yöntem): rengi en güçlü kıvılcım belirler, yoğunluk birikir.
         let r = 0, g = 0, b = 0, wsum = 0, dark = 1;
@@ -463,8 +453,7 @@ export const EFFECTS = [
           const wt = Math.pow(v, 6);
           r += q.col[0] * wt; g += q.col[1] * wt; b += q.col[2] * wt; wsum += wt; dark *= 1 - v;
         }
-        const base = pal(p.palette, k.cx / WIDTH_U), keep = lvl * dark, hit = wsum ? (1 - dark) / wsum : 0;
-        put(out, k.i, [base[0] * keep + r * hit, base[1] * keep + g * hit, base[2] * keep + b * hit]);
+        put(out, k.i, [r, g, b], wsum ? (1 - dark) / wsum : 0);
       }
     },
   },
