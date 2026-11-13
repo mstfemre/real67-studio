@@ -4,7 +4,7 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 
 ## Mimari
 - `service/service.mjs`: Node servisi. node-hid ile klavyeye bağlanır, efektleri ~60 kare/sn oynatır, `web-app/` klasörünü `http://localhost:8667` üzerinden sunar. API: `/api/status`, `/api/play`, `/api/stop`, `/api/resume`, `/api/mood` (otomatik renk), `/api/mood/get`, `/api/mood/set`, `/api/quit`. Durum `service/state.json` içinde saklanır.
-- `service/keys.mjs`: tuş basışı algılama (koffi + `GetAsyncKeyState`, kanca yok; tarama kodu o anki klavye düzeniyle çevrilir). Yalnızca `needsKeys: true` olan efektler (Halkalar, Tuş izi, Yazma akışı, Havai fişek, Lazer, Isı haritası) oynarken yoklanır; sonuç `frame()`'e `presses` olarak gider. koffi yoksa servis çalışır, bu efektler tepkisiz kalır, kısayollar çalışmaz (`/api/status` → `keys: false`).
+- `service/keys.mjs`: tuş basışı algılama (koffi + `GetAsyncKeyState`, kanca yok; tarama kodu o anki klavye düzeniyle çevrilir). Yalnızca `needsKeys: true` olan efektler (Halkalar, Tuş izi, Yazma akışı, Havai fişek, Lazer, Isı haritası, Takımyıldız, Yıldırım) oynarken yoklanır; sonuç `frame()`'e `presses` olarak gider. koffi yoksa servis çalışır, bu efektler tepkisiz kalır, kısayollar çalışmaz (`/api/status` → `keys: false`).
 - Kısayollar (`hotkeyReader` + serviste `onHotkey`): Ctrl+Alt+← → efekt, ↑ ↓ parlaklık; her zaman 25 ms'de bir yoklanır, Hive duraklatmasında yoklanmaz. Her efektin son ayarları `state.json` → `fxParams`. Servis her `play`'de `rev` artırır; arayüz `revSource === 'hotkey'` olan değişikliği ekranına alır (`adoptServiceEffect`), kendi gönderdiklerini almaz.
 - Favoriler: yalnızca arayüzde, `localStorage` → `store.favs` (`{id, fxId, name, params}`), en çok 12.
 - Windows kilitliyken `GetAsyncKeyState` her şeyi 0 döner: kilit ekranında basış / kısayol algılanmaz (yapay tuş basışıyla sınama da o sırada çalışmaz).
@@ -26,7 +26,7 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 - Arayüz sade olsun: tek ekran, açıklama metni az, düğme az. Bir efekte tıklamak onu oynatır.
 - Yanıp sönme / nefes istemiyor; renkler aksın.
 - Halkalar kendiliğinden (rastgele) halka çıkarmamalı; yalnızca tuş basışına tepki verir. Tuş tepkili efektlerde renkler üst üste toplanmamalı (beyaza dönüyor).
-- Tuş tepkili efektlerde (Halkalar, Tuş izi, Havai fişek, Lazer, Isı haritası) zemin ışığı olmasın: basış yokken klavye tamamen siyah.
+- Tuş tepkili efektlerde (Halkalar, Tuş izi, Havai fişek, Lazer, Isı haritası, Takımyıldız, Yıldırım) zemin ışığı olmasın: basış yokken klavye tamamen siyah.
 - Yeni özellikleri önce ayrı dalda / ayrı klasörde (git worktree) yap, ayrı portta dene; çalışan sürüm onay gelene kadar değişmesin.
 - Rapid trigger ve tuş atamaları asla bozulmamalı. Kontrol için Hive'ın salt-okunur sorguları kullanılabilir (0x0a 0x97, 0x04 0x80/81/83/85, 0x02 0x80).
 - Rafa kaldırılanlar (kod duruyor, arayüzde yok): Tuş dalgası efekti, Tuş boyama / Klavyeye kaydet / Paket günlüğü sekmeleri, Genel ayarlar kartı.

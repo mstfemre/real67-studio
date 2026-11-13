@@ -104,6 +104,21 @@ const palFn = (name, t) => (name === 'gokkusagi' || !PALETTES[name] ? hsv(t, 1, 
 
 const put = (out, i, c, k = 1) => { out[i * 3] = c[0] * k; out[i * 3 + 1] = c[1] * k; out[i * 3 + 2] = c[2] * k; };
 const CX = WIDTH_U / 2, CY = HEIGHT_U / 2;
+// "Canlı" renk: en parlak kanal 1'e çekilir, böylece koyu palet rengi de parlak ışık verir.
+const vivid = (c) => { const mx = Math.max(c[0], c[1], c[2], 0.001); return [c[0] / mx, c[1] / mx, c[2] / mx]; };
+// Paletten rastgele ama görünür bir renk: siyaha yakın bir yere denk gelirse yeniden dener.
+const randVivid = (name) => {
+  let c = pal(name, Math.random());
+  for (let i = 0; i < 6 && Math.max(c[0], c[1], c[2]) < 0.3; i++) c = pal(name, Math.random());
+  return vivid(c);
+};
+// Sıra sıra tuşlar (soldan sağa) ve her tuşun bitişik komşuları (aynı sırada yan yana, alt/üst sırada üst üste binen).
+const ROW_KEYS = Array.from({ length: HEIGHT_U }, (_, r) => KEYS.filter((k) => k.row === r));
+const NEIGH = KEYS.map((a) => KEYS.filter((b) => {
+  if (a === b) return false;
+  const gap = Math.abs(a.cx - b.cx) - (a.w + b.w) / 2; // < 0: yatayda üst üste biniyor
+  return a.row === b.row ? gap < 0.6 : Math.abs(a.row - b.row) === 1 && gap < -0.2;
+}));
 
 export const EFFECTS = [
   {
@@ -524,6 +539,105 @@ export const EFFECTS = [
     },
   },
   {
+    id: 'constellation', name: 'Takımyıldız', hint: 'Art arda bastığın tuşlar ışık çizgisiyle birleşir. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true,
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 5, max: 60, step: 1, def: 28 },
+      { key: 'fade', label: 'Solma süresi', type: 'range', min: 0.3, max: 4, step: 0.1, def: 1.4, unit: ' sn' },
+      { key: 'width', label: 'Çizgi kalınlığı', type: 'range', min: 0.3, max: 1.2, step: 0.05, def: 0.6 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'nebula' },
+    ],
+    init(s) { s.segs = []; s.last = null; s.idle = 0; s.hue = Math.random(); },
+    frame({ dt, p, out, s, presses }) {
+      // Her basış, bir önceki basılan tuştan yenisine bir çizgi çeker: ışık çizgi boyunca ilerler,
+      // geçtiği yer "Solma süresi" içinde söner. Basılan tuş beklemeden yanar. Zemin ışığı yok, renkler toplanmaz.
+      // Her tuşun palette bir yeri vardır; çizginin rengi baştaki tuşun renginden sondakine palet
+      // üzerinden yürür. Böylece iki çizginin birleştiği tuşta renkler aynıdır, karışıp grileşmez.
+      s.idle += dt;
+      for (const k of presses) {
+        const h0 = fract(s.hue), h1 = h0 + 0.381966;
+        s.hue = h1;
+        // uzun bir aradan sonraki ilk basış çizgi çekmez: yalnızca kendi tuşu yanar
+        const from = s.last && s.idle < 3 ? s.last : k;
+        s.segs.push({ x0: from.cx, y0: from.cy, x1: k.cx, y1: k.cy, len: Math.hypot(k.cx - from.cx, k.cy - from.cy), end: k.i, age: 0, h0: from === k ? h1 : h0, h1 });
+        s.last = k; s.idle = 0;
+      }
+      if (s.segs.length > 24) s.segs.splice(0, s.segs.length - 24);
+      for (const g of s.segs) g.age += dt;
+      s.segs = s.segs.filter((g) => g.age < g.len / p.speed + p.fade);
+      for (const k of KEYS) {
+        let r = 0, gr = 0, b = 0, wsum = 0, dark = 1;
+        for (const g of s.segs) {
+          // tuşun çizgiye izdüşümü: u = çizgi boyunca yol (0..len), d = çizgiye uzaklık
+          const u = g.len > 0.01 ? clamp(((k.cx - g.x0) * (g.x1 - g.x0) + (k.cy - g.y0) * (g.y1 - g.y0)) / g.len, 0, g.len) : 0;
+          const f = g.len > 0.01 ? u / g.len : 0;
+          const d = Math.hypot(k.cx - mix(g.x0, g.x1, f), k.cy - mix(g.y0, g.y1, f));
+          const since = g.age - u / p.speed; // ışık bu noktadan geçeli ne kadar oldu
+          let v = since >= 0 ? Math.exp(-((d / p.width) ** 2)) * Math.max(0, 1 - since / p.fade) : 0;
+          if (k.i === g.end) v = Math.max(v, 1 - g.age / p.fade);
+          if (v < 0.004) continue;
+          const wt = Math.pow(v, 6), c = vivid(pal(p.palette, mix(g.h0, g.h1, f)));
+          r += c[0] * wt; gr += c[1] * wt; b += c[2] * wt; wsum += wt; dark *= 1 - Math.min(1, v);
+        }
+        put(out, k.i, [r, gr, b], wsum ? (1 - dark) / wsum : 0);
+      }
+    },
+  },
+  {
+    id: 'arc', name: 'Yıldırım', hint: 'Bastığın tuştan, tuştan tuşa atlayan elektrik arkları çıkar. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true,
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 10, max: 80, step: 1, def: 38 },
+      { key: 'len', label: 'Uzunluk', type: 'range', min: 3, max: 14, step: 1, def: 8 },
+      { key: 'fork', label: 'Dallanma', type: 'range', min: 0, max: 100, step: 1, def: 45, unit: '%' },
+      { key: 'fade', label: 'Solma süresi', type: 'range', min: 0.2, max: 2, step: 0.05, def: 0.7, unit: ' sn' },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'mavikizil' },
+    ],
+    init(s) { s.v = new Float32Array(N); s.c = Array.from({ length: N }, () => [0, 0, 0]); s.arcs = []; s.hue = Math.random(); },
+    frame({ dt, p, out, s, presses }) {
+      // Her basış zıt yönlere iki kol çıkarır. Kol, komşu tuştan komşu tuşa zikzak çizerek ilerler
+      // ve yolda dallanabilir; değdiği tuş yanar, sonra doğrusal söner. Tuşun rengini ona en son
+      // değen ark belirler (renkler toplanmaz). Zemin ışığı yok.
+      const walk = (from, ang, hops, t0, seen, nodes, depth) => {
+        let cur = from;
+        const dx = Math.cos(ang), dy = Math.sin(ang) * 0.6; // yatay ağırlıklı: klavye 5 sıra
+        for (let h = 1; h <= hops; h++) {
+          let best = null, bs = 0.1; // geriye ya da yana sapan komşu seçilmez: kol incelir, yumak olmaz
+          for (const n of NEIGH[cur.i]) {
+            if (seen.has(n.i)) continue;
+            const ex = n.cx - cur.cx, ey = n.cy - cur.cy;
+            const sc = (ex * dx + ey * dy) / Math.hypot(ex, ey) + (Math.random() - 0.5) * 0.7;
+            if (sc > bs) { bs = sc; best = n; }
+          }
+          if (!best) break;
+          seen.add(best.i); nodes.push({ i: best.i, t: t0 + h / p.speed });
+          // dal: ana koldan belirgin bir açıyla ayrılır, daha kısadır ve kendisi dallanmaz
+          if (depth < 1 && h > 1 && Math.random() < (p.fork / 100) * 0.3)
+            walk(best, ang + (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.5), Math.ceil((hops - h) * 0.6), t0 + h / p.speed, seen, nodes, depth + 1);
+          cur = best;
+        }
+      };
+      for (const k of presses) {
+        s.hue = fract(s.hue + 0.381966);
+        const col = vivid(pal(p.palette, s.hue)), seen = new Set([k.i]), nodes = [{ i: k.i, t: 0 }];
+        const a0 = Math.random() * Math.PI * 2;
+        walk(k, a0, p.len, 0, seen, nodes, 0);
+        walk(k, a0 + Math.PI, p.len, 0, seen, nodes, 0);
+        nodes.sort((a, b) => a.t - b.t);
+        s.arcs.push({ nodes, at: 0, age: 0, col });
+      }
+      if (s.arcs.length > 48) s.arcs.splice(0, s.arcs.length - 48);
+      const step = dt / p.fade;
+      for (let i = 0; i < N; i++) s.v[i] = Math.max(0, s.v[i] - step);
+      for (const a of s.arcs) {
+        a.age += dt;
+        while (a.at < a.nodes.length && a.nodes[a.at].t <= a.age) { const n = a.nodes[a.at++]; s.v[n.i] = 1; s.c[n.i] = a.col; }
+      }
+      s.arcs = s.arcs.filter((a) => a.at < a.nodes.length);
+      for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
+    },
+  },
+  {
     id: 'lava', name: 'Lav lambası', hint: 'Yavaşça birleşip ayrılan renk damlaları.',
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 2, step: 0.01, def: 0.4 },
@@ -716,6 +830,180 @@ export const EFFECTS = [
         }
       });
       for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
+    },
+  },
+  {
+    id: 'warp', name: 'Işık hızı', hint: 'Merkezden dışarı hızlanarak akan yıldızlar.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0.2, max: 3, step: 0.05, def: 1 },
+      { key: 'count', label: 'Yıldız sayısı', type: 'range', min: 4, max: 30, step: 1, def: 12 },
+      { key: 'trail', label: 'İz uzunluğu', type: 'range', min: 0.1, max: 1.5, step: 0.05, def: 0.5 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'buzul' },
+    ],
+    init(s) { s.v = new Float32Array(N); s.c = Array.from({ length: N }, () => [0, 0, 0]); s.stars = []; },
+    frame({ dt, p, out, s }) {
+      // Yıldız merkezin yakınında doğar, uzaklaştıkça hızlanır ve parlar (yaklaşan yıldız hissi).
+      // Dikey bileşen kısılır: klavye 5 sıra, yoksa yıldızların çoğu hemen üstten/alttan çıkar.
+      const spawn = (r) => { const a = Math.random() * Math.PI * 2; return { ca: Math.cos(a), sa: Math.sin(a) * 0.42, r, k: 0.6 + Math.random() * 0.8, col: randVivid(p.palette) }; };
+      while (s.stars.length < p.count) s.stars.push(spawn(Math.random() * 7));
+      s.stars.length = Math.min(s.stars.length, p.count);
+      const kf = Math.pow(0.02, dt / p.trail);
+      for (let i = 0; i < N; i++) s.v[i] *= kf;
+      for (const q of s.stars) {
+        q.r += (1.2 + q.r * 1.8) * q.k * p.speed * dt;
+        const x = CX + q.ca * q.r, y = CY + q.sa * q.r;
+        if (x < -1 || x > WIDTH_U + 1 || y < -0.8 || y > HEIGHT_U + 0.8) { Object.assign(q, spawn(0.2 + Math.random() * 0.8)); continue; }
+        const b = clamp(0.1 + q.r / 3.5);
+        for (const k of KEYS) {
+          const g = b * Math.exp(-((k.cx - x) ** 2 + (k.cy - y) ** 2) / 0.4);
+          if (g > s.v[k.i]) { s.v[k.i] = g; s.c[k.i] = q.col; }
+        }
+      }
+      for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
+    },
+  },
+  {
+    id: 'orbit', name: 'Yörünge', hint: 'Ortadaki güneşin çevresinde dönen, arkasında iz bırakan gezegenler.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 1.5, step: 0.01, def: 0.4 },
+      { key: 'count', label: 'Gezegen sayısı', type: 'range', min: 1, max: 6, step: 1, def: 4 },
+      { key: 'trail', label: 'İz uzunluğu', type: 'range', min: 0.1, max: 2, step: 0.05, def: 0.8 },
+      { key: 'sun', label: 'Güneş', type: 'toggle', def: true },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'atesbuz' },
+    ],
+    init(s) { s.v = new Float32Array(N); s.c = Array.from({ length: N }, () => [0, 0, 0]); s.ph = Math.random() * 100; },
+    frame({ dt, p, out, s }) {
+      // Yörüngeler yatay elipstir (klavye geniş ve basık). İçteki gezegen daha hızlı döner.
+      // Elipsin üst yarısı "arkada" sayılır ve biraz loş çizilir: derinlik hissi verir.
+      const kf = Math.pow(0.02, dt / p.trail);
+      for (let i = 0; i < N; i++) s.v[i] *= kf;
+      const n = p.count, SUB = 3; // kare içi ara adımlar: hızlı gezegen tuş atlamaz
+      for (let j = 1; j <= SUB; j++) {
+        const ph = s.ph + dt * p.speed * (j / SUB);
+        for (let i = 0; i < n; i++) {
+          const a = n > 1 ? 2.4 + (i * 5) / (n - 1) : 5;
+          const th = ph * Math.PI * 2 * 1.6 * Math.pow(2.4 / a, 1.2) + i * 2.4;
+          const x = CX + Math.cos(th) * a, y = CY + Math.sin(th) * a * 0.3;
+          const col = vivid(pal(p.palette, i / n)), depth = 0.8 + 0.2 * Math.sin(th);
+          for (const k of KEYS) {
+            const g = depth * Math.exp(-((k.cx - x) ** 2 + (k.cy - y) ** 2) / 0.4);
+            if (g > s.v[k.i]) { s.v[k.i] = g; s.c[k.i] = col; }
+          }
+        }
+      }
+      s.ph += dt * p.speed;
+      if (p.sun) {
+        const col = vivid(pal(p.palette, s.ph * 0.02 + 0.5));
+        for (const k of KEYS) {
+          const g = Math.exp(-((k.cx - CX) ** 2 + ((k.cy - CY) * 1.3) ** 2) / 1.5);
+          if (g > s.v[k.i]) { s.v[k.i] = g; s.c[k.i] = col; }
+        }
+      }
+      for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
+    },
+  },
+  {
+    id: 'circuit', name: 'Devre', hint: 'Devre yollarında ilerleyen, köşelerden dönerek sıra değiştiren sinyaller.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 2, max: 30, step: 0.5, def: 10 },
+      { key: 'count', label: 'Sinyal sayısı', type: 'range', min: 1, max: 10, step: 1, def: 5 },
+      { key: 'trail', label: 'İz uzunluğu', type: 'range', min: 0.1, max: 2.5, step: 0.05, def: 1 },
+      { key: 'turn', label: 'Dönüş sıklığı', type: 'range', min: 0, max: 100, step: 1, def: 50, unit: '%' },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'yesilkod' },
+    ],
+    init(s) { s.v = new Float32Array(N); s.c = Array.from({ length: N }, () => [0, 0, 0]); s.sig = []; },
+    frame({ dt, p, out, s }) {
+      // Sinyal bir sıra boyunca ilerler; ara sıra dik dönüp bir iki sıra yukarı ya da aşağı geçer
+      // ve aynı yönde sürer (baskı devre yolları gibi). Kenardan çıkınca yenisi girer.
+      const gap = () => (p.turn > 0 ? (1.5 + Math.random() * 5) * (50 / p.turn) : Infinity); // sonraki dönüşe kadar yol (u)
+      const spawn = () => {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        return { x: dir > 0 ? -0.5 : WIDTH_U + 0.5, y: ((Math.random() * HEIGHT_U) | 0) + 0.5, dir, ty: null, next: gap(), col: randVivid(p.palette) };
+      };
+      while (s.sig.length < p.count) { const q = spawn(); q.x = Math.random() * WIDTH_U; s.sig.push(q); }
+      s.sig.length = Math.min(s.sig.length, p.count);
+      const kf = Math.pow(0.02, dt / p.trail);
+      for (let i = 0; i < N; i++) s.v[i] *= kf;
+      const steps = Math.min(40, Math.max(1, Math.ceil((p.speed * dt) / 0.4))), ds = (p.speed * dt) / steps; // küçük adımlar: tuş atlanmaz
+      for (const q of s.sig) for (let j = 0; j < steps; j++) {
+        if (q.ty === null) {
+          q.x += q.dir * ds; q.next -= ds;
+          if (q.next <= 0 && q.x > 1 && q.x < WIDTH_U - 1) {
+            const row = Math.floor(q.y), opts = [-2, -1, 1, 2].filter((d) => row + d >= 0 && row + d < HEIGHT_U);
+            q.ty = row + opts[(Math.random() * opts.length) | 0] + 0.5;
+          }
+        } else {
+          const d = Math.sign(q.ty - q.y);
+          q.y += d * ds;
+          if ((q.ty - q.y) * d <= 0) { q.y = q.ty; q.ty = null; q.next = gap(); }
+        }
+        if (q.x < -1 || q.x > WIDTH_U + 1) { Object.assign(q, spawn()); break; }
+        const row = ROW_KEYS[clamp(Math.floor(q.y), 0, HEIGHT_U - 1)];
+        for (const k of row) if (q.x >= k.x && q.x < k.x + k.w) { s.v[k.i] = 1; s.c[k.i] = q.col; break; }
+      }
+      for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
+    },
+  },
+  {
+    id: 'stack', name: 'Yığın', hint: 'Renkli bloklar kayarak gelir ve sıraları doldurur; klavye dolunca süpürülür, yeniden başlar.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 4, max: 50, step: 0.5, def: 20 },
+      { key: 'alt', label: 'Dönüşümlü yön', type: 'toggle', def: true },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'saripembe' },
+    ],
+    init(s) { s.rows = null; },
+    frame({ dt, p, out, s }) {
+      // Her sırada bloklar karşı kenardan art arda kayarak gelir, dolu kısmın ucuna oturur. Bütün
+      // sıralar dolunca kısa bir bekleme, sonra soldan sağa yumuşak kenarlı bir süpürme ile boşalır.
+      if (!s.rows || s.alt !== p.alt) {
+        s.alt = p.alt; s.hue = s.hue ?? Math.random(); s.wipe = -1; s.hold = 0;
+        s.col = Array.from({ length: N }, () => [0, 0, 0]);
+        s.rows = ROW_KEYS.map((keys, r) => {
+          const sgn = p.alt && r % 2 ? -1 : 1; // +1: sola yığılır (bloklar sağdan gelir), -1: tersi
+          return { sgn, order: sgn > 0 ? keys : [...keys].reverse(), fill: 0, sent: 0, blks: [], wait: Math.random() * 0.5, k: 0.85 + Math.random() * 0.3 };
+        });
+      }
+      let full = true;
+      for (const R of s.rows) {
+        if (R.fill < R.order.length) full = false;
+        if (R.sent < R.order.length && (R.wait -= dt) <= 0) {
+          s.hue = fract(s.hue + 0.045); // art arda gelen bloklar palette komşu renkler alır
+          R.blks.push({ x: R.sgn > 0 ? WIDTH_U + 1 : -1, col: pal(p.palette, s.hue), tgt: R.order[R.sent++] });
+          R.wait = (3 + Math.random() * 6) / p.speed; // bloklar arası en az 3u: sıradaki öndekine yetişmez
+        }
+        for (const b of R.blks) b.x -= R.sgn * p.speed * R.k * dt;
+        while (R.blks.length && (R.blks[0].x - R.blks[0].tgt.cx) * R.sgn <= 0) { const b = R.blks.shift(); s.col[b.tgt.i] = b.col; R.fill++; }
+      }
+      if (full) { if (s.wipe < 0) { if ((s.hold += dt) > 1) s.wipe = 0; } else s.wipe += (dt * p.speed) / 22; }
+      const wx = s.wipe < 0 ? -1e9 : -2.5 + s.wipe * (WIDTH_U + 5);
+      for (const R of s.rows) R.order.forEach((k, j) => {
+        if (j < R.fill) return put(out, k.i, s.col[k.i], sm(clamp((k.cx - wx) / 2.5)));
+        let v = 0, col = s.col[k.i];
+        for (const b of R.blks) {
+          const e = (k.cx - b.x) * R.sgn; // > 0: bloğun arkası (geldiği taraf)
+          const bv = Math.max(Math.max(0, 1 - Math.abs(e) / 0.9), e > 0 ? 0.5 * Math.max(0, 1 - e / 2.5) : 0);
+          if (bv > v) { v = bv; col = b.col; }
+        }
+        put(out, k.i, col, v);
+      });
+      if (s.wipe >= 1) s.rows = null; // boşaldı: sonraki karede baştan
+    },
+  },
+  {
+    id: 'chevron', name: 'Şevron', hint: 'Klavye boyunca akan ok başı biçimli renk bantları.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.4 },
+      { key: 'scale', label: 'Bant genişliği', type: 'range', min: 0.2, max: 3, step: 0.01, def: 0.8 },
+      { key: 'sharp', label: 'Ok açısı', type: 'range', min: 0, max: 3, step: 0.05, def: 1.3 },
+      { key: 'reverse', label: 'Ters yön', type: 'toggle', def: false },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'tropik' },
+    ],
+    init(s) { s.ph = 0; },
+    frame({ dt, p, out, s }) {
+      // Orta sıra önde, üst ve alt sıralar geride: bantlar ">" biçimini alır ve o yöne akar.
+      s.ph += dt * p.speed;
+      const dir = p.reverse ? -1 : 1;
+      for (const k of KEYS) put(out, k.i, pal(p.palette, (dir * k.cx + Math.abs(k.cy - CY) * p.sharp) / WIDTH_U / p.scale - s.ph));
     },
   },
   {

@@ -1,6 +1,6 @@
 # Real67 Studio
 
-An unofficial lighting controller for the MelGeek **Real67** keyboard. The keyboard's built-in RGB modes are few and limited, so this project adds **32 live effects**, **30 colour palettes**, key-reactive lighting, favourites, hotkeys and ambient (mood) light control.
+An unofficial lighting controller for the MelGeek **Real67** keyboard. The keyboard's built-in RGB modes are few and limited, so this project adds **39 live effects**, **30 colour palettes**, key-reactive lighting, favourites, hotkeys and ambient (mood) light control.
 
 A small background service plays the effects. You can close the browser and the lights keep flowing; after a reboot they pick up where they left off.
 
@@ -35,8 +35,8 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 
 ## Features
 
-- **32 live effects**, each with its own speed, brightness and style settings
-- **Key-reactive effects** (Ripples, Key trail, Typing flow, Fireworks, Laser, Heat map) that react to whatever you type, in any program; the keyboard stays dark until you press a key
+- **39 live effects**, each with its own speed, brightness and style settings
+- **Key-reactive effects** (Ripples, Key trail, Typing flow, Fireworks, Laser, Heat map, Constellation, Lightning) that react to whatever you type, in any program; the keyboard stays dark until you press a key
 - **30 colour palettes**, selectable in every effect that uses one
 - **Favourites:** save an effect with its exact settings and replay it in one click
 - **Hotkeys:** switch effects and change brightness without opening the interface
@@ -91,6 +91,8 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 | **Fireworks** (*Havai fişek*) | Sparks scatter from each key you press |
 | **Laser** (*Lazer*) | Beams shoot along the row (and column) of each key you press |
 | **Heat map** (*Isı haritası*) | Keys warm up as you press them; busy areas change colour |
+| **Constellation** (*Takımyıldız*) | A line of light joins each key you press to the previous one |
+| **Lightning** (*Yıldırım*) | Electric arcs jump from key to key, away from each key you press |
 | Lava lamp (*Lav lambası*) | Blobs of colour merging and splitting |
 | Vortex (*Girdap*) | A colour spiral rotating around the centre |
 | Kaleidoscope (*Kaleydoskop*) | An ever-changing pattern mirrored from the centre |
@@ -100,6 +102,11 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 | Lanes (*Şeritler*) | Each row flows in its own direction and speed |
 | Tide (*Gelgit*) | Water filling the lower keyboard with a rippling surface |
 | Bounce (*Sektirme*) | Balls of light bouncing off the edges, leaving trails |
+| Warp speed (*Işık hızı*) | Stars streaming out from the centre, speeding up as they go |
+| Orbit (*Yörünge*) | Planets circling a sun in the middle, leaving trails |
+| Circuit (*Devre*) | Signals running along the rows and turning corners like circuit traces |
+| Stack (*Yığın*) | Coloured blocks slide in and fill the rows; when full, they are swept away |
+| Chevron (*Şevron*) | Arrow-shaped colour bands flowing across the keyboard |
 | Storm (*Fırtına*) | Dark clouds and flashes of lightning |
 | Heartbeat (*Kalp atışı*) | A double-beat pulse spreading from the centre |
 | Scanner (*Tarayıcı*) | A bar of light sweeping back and forth |
