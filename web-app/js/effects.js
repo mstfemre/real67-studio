@@ -458,6 +458,72 @@ export const EFFECTS = [
     },
   },
   {
+    id: 'laser', name: 'Lazer', hint: 'Bastığın tuştan sıra boyunca iki yana ışın fırlar. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true,
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 5, max: 40, step: 1, def: 18 },
+      { key: 'len', label: 'Işın uzunluğu', type: 'range', min: 1, max: 8, step: 0.5, def: 3.5 },
+      { key: 'cross', label: 'Dikey ışın', type: 'toggle', def: true },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'zehir' },
+    ],
+    init(s) { s.beams = []; s.hue = Math.random(); },
+    frame({ dt, p, out, s, presses }) {
+      // Her basış, tuşun sırasında sola ve sağa (istenirse sütununda yukarı ve aşağı) giden bir ışın
+      // başlatır: baş tam parlak, arkası "Işın uzunluğu" kadar kuyruk. Zemin ışığı yok, renkler toplanmaz.
+      for (const k of presses) {
+        s.hue = fract(s.hue + 0.381966);
+        const c = pal(p.palette, s.hue), mx = Math.max(c[0], c[1], c[2], 0.001);
+        s.beams.push({ x: k.cx, y: k.cy, row: k.row, r: 0, col: [c[0] / mx, c[1] / mx, c[2] / mx] });
+      }
+      if (s.beams.length > 32) s.beams.splice(0, s.beams.length - 32);
+      for (const b of s.beams) b.r += p.speed * dt;
+      s.beams = s.beams.filter((b) => b.r < WIDTH_U + p.len);
+      const shape = (e, r) => (e <= r ? Math.max(0, 1 - (r - e) / p.len) : Math.max(0, 1 - (e - r) / 0.5));
+      for (const k of KEYS) {
+        let r = 0, g = 0, bl = 0, wsum = 0, dark = 1;
+        for (const b of s.beams) {
+          let v = k.row === b.row ? shape(Math.abs(k.cx - b.x), b.r) : 0;
+          // dikey ışın: sıralar kaydırmalı olduğu için sütun, yatay yakınlıkla (0,75u) belirlenir
+          if (p.cross && k.row !== b.row && Math.abs(k.cx - b.x) < 0.75) v = shape(Math.abs(k.cy - b.y), b.r);
+          if (v < 0.004) continue;
+          const wt = Math.pow(v, 6);
+          r += b.col[0] * wt; g += b.col[1] * wt; bl += b.col[2] * wt; wsum += wt; dark *= 1 - v;
+        }
+        put(out, k.i, [r, g, bl], wsum ? (1 - dark) / wsum : 0);
+      }
+    },
+  },
+  {
+    id: 'heat', name: 'Isı haritası', hint: 'Bastığın tuşlar ısınır, çok kullandığın bölge renk değiştirir; bırakınca soğur.',
+    needsKeys: true,
+    params: [
+      { key: 'gain', label: 'Isınma', type: 'range', min: 10, max: 100, step: 1, def: 35, unit: '%' },
+      { key: 'cool', label: 'Soğuma süresi', type: 'range', min: 1, max: 15, step: 0.5, def: 5, unit: ' sn' },
+      { key: 'spread', label: 'Yayılma', type: 'range', min: 0, max: 100, step: 1, def: 50, unit: '%' },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'lav' },
+    ],
+    init(s) { s.h = new Float32Array(N); },
+    frame({ dt, p, out, s, presses }) {
+      // Tuşun "ısısı" her basışta artar (komşularınınki daha az), zamanla doğrusal düşer.
+      // Renk ısıya göre paletin başından sonuna yürür; ısı sıfırken tuş karanlıktır (zemin ışığı yok).
+      const gain = p.gain / 100, spread = p.spread / 100;
+      for (const k of presses) {
+        s.h[k.i] = Math.min(1, s.h[k.i] + gain);
+        if (spread > 0) for (const n of KEYS) {
+          const d = Math.hypot(n.cx - k.cx, (n.cy - k.cy) * 1.15);
+          if (n !== k && d < 2.2) s.h[n.i] = Math.min(1, s.h[n.i] + gain * spread * (1 - d / 2.2));
+        }
+      }
+      const step = dt / p.cool;
+      for (const k of KEYS) {
+        const h = (s.h[k.i] = Math.max(0, s.h[k.i] - step));
+        // paletler döngüseldir: 0..0,75 aralığı ilk renkten son renge gider, başa sarmaz
+        const c = pal(p.palette, h * 0.75), mx = Math.max(c[0], c[1], c[2], 0.001);
+        put(out, k.i, c, clamp(h * 2.5) / mx);
+      }
+    },
+  },
+  {
     id: 'lava', name: 'Lav lambası', hint: 'Yavaşça birleşip ayrılan renk damlaları.',
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 2, step: 0.01, def: 0.4 },
@@ -565,6 +631,91 @@ export const EFFECTS = [
         const wA = vA ** 4, wB = vB ** 4, ws = wA + wB || 1, lum = 1 - (1 - vA) * (1 - vB);
         put(out, k.i, [(cA[0] * wA + cB[0] * wB) / ws, (cA[1] * wA + cB[1] * wB) / ws, (cA[2] * wA + cB[2] * wB) / ws], lum);
       }
+    },
+  },
+  {
+    id: 'tunnel', name: 'Tünel', hint: 'Merkezden dışarı (ya da içeri) akan renk halkaları.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.4 },
+      { key: 'scale', label: 'Halka genişliği', type: 'range', min: 0.3, max: 3, step: 0.05, def: 1 },
+      { key: 'inward', label: 'İçeri doğru', type: 'toggle', def: false },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'nebula' },
+    ],
+    init(s) { s.ph = 0; },
+    frame({ dt, p, out, s }) {
+      s.ph += dt * p.speed * (p.inward ? -1 : 1);
+      for (const k of KEYS) put(out, k.i, pal(p.palette, Math.hypot(k.cx - CX, (k.cy - CY) * 2.2) / CX / p.scale - s.ph));
+    },
+  },
+  {
+    id: 'lanes', name: 'Şeritler', hint: 'Her sıra kendi yönünde ve hızında akar.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.4 },
+      { key: 'scale', label: 'Bant genişliği', type: 'range', min: 0.3, max: 3, step: 0.05, def: 1 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'vapor' },
+    ],
+    init(s) { s.ph = 0; },
+    frame({ dt, p, out, s }) {
+      s.ph += dt * p.speed;
+      for (const k of KEYS) {
+        // tek sıralar sola, çift sıralar sağa; her sıranın hızı biraz farklı
+        const dir = k.row % 2 ? -1 : 1, rate = 0.7 + 0.15 * ((k.row * 3) % 5);
+        put(out, k.i, pal(p.palette, k.cx / WIDTH_U / p.scale - dir * s.ph * rate + k.row * 0.13));
+      }
+    },
+  },
+  {
+    id: 'tide', name: 'Gelgit', hint: 'Klavyenin altını dolduran, yüzeyi dalgalanan su.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 2, step: 0.01, def: 0.5 },
+      { key: 'level', label: 'Su seviyesi', type: 'range', min: 20, max: 80, step: 1, def: 50, unit: '%' },
+      { key: 'wave', label: 'Dalga yüksekliği', type: 'range', min: 0, max: 1.5, step: 0.05, def: 0.8 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'okyanus' },
+    ],
+    init(s) { s.ph = 0; },
+    frame({ dt, p, out, s }) {
+      // Yüzey iki sinüsün toplamıdır. Yüzeyin üstü karanlık, yüzey parlak (köpük), derin su daha loş.
+      s.ph += dt * p.speed;
+      for (const k of KEYS) {
+        const surf = HEIGHT_U * (1 - p.level / 100) + p.wave * (Math.sin(k.cx * 0.55 + s.ph * 2.1) * 0.6 + Math.sin(k.cx * 0.23 - s.ph * 1.3 + 1.7) * 0.4);
+        const depth = k.cy - surf; // > 0: su altında
+        const a = sm(clamp(depth / 0.8 + 0.5)), crest = Math.exp(-((depth / 0.7) ** 2));
+        put(out, k.i, pal(p.palette, 0.15 + clamp(depth / HEIGHT_U) * 0.6 + (k.cx / WIDTH_U) * 0.15), a * (0.45 + 0.55 * crest));
+      }
+    },
+  },
+  {
+    id: 'bounce', name: 'Sektirme', hint: 'Kenarlardan seken, arkasında iz bırakan ışık topları.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 2, max: 20, step: 0.5, def: 8 },
+      { key: 'count', label: 'Top sayısı', type: 'range', min: 1, max: 6, step: 1, def: 3 },
+      { key: 'trail', label: 'İz uzunluğu', type: 'range', min: 0.1, max: 2, step: 0.05, def: 0.7 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'seker' },
+    ],
+    init(s) { s.v = new Float32Array(N); s.c = Array.from({ length: N }, () => [0, 0, 0]); s.balls = []; },
+    frame({ dt, p, out, s }) {
+      while (s.balls.length < p.count) {
+        // dikey bileşen küçük tutulur: klavye 5 sıra, yoksa top sürekli alt-üst kenara çarpar
+        const a = (Math.random() - 0.5) * 1.0 + (Math.random() < 0.5 ? 0 : Math.PI);
+        s.balls.push({ x: Math.random() * WIDTH_U, y: Math.random() * HEIGHT_U, vx: Math.cos(a), vy: Math.sin(a) });
+      }
+      s.balls.length = Math.min(s.balls.length, p.count);
+      const kf = Math.pow(0.02, dt / p.trail);
+      for (let i = 0; i < N; i++) s.v[i] *= kf;
+      // 0..max aralığında ileri geri katlama: uzun bir karede bile top dışarı çıkmaz
+      const fold = (v, max) => { v %= 2 * max; if (v < 0) v += 2 * max; return v > max ? 2 * max - v : v; };
+      s.balls.forEach((b, i) => {
+        const nx = b.x + b.vx * p.speed * dt, ny = b.y + b.vy * p.speed * dt;
+        if (nx < 0 || nx > WIDTH_U) b.vx = -b.vx;
+        if (ny < 0 || ny > HEIGHT_U) b.vy = -b.vy;
+        b.x = fold(nx, WIDTH_U); b.y = fold(ny, HEIGHT_U);
+        const col = pal(p.palette, i / p.count);
+        for (const k of KEYS) {
+          const g = Math.exp(-((k.cx - b.x) ** 2 + (k.cy - b.y) ** 2) / 0.45);
+          if (g > s.v[k.i]) { s.v[k.i] = g; s.c[k.i] = col; }
+        }
+      });
+      for (let i = 0; i < N; i++) put(out, i, s.c[i], s.v[i]);
     },
   },
   {

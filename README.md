@@ -1,6 +1,6 @@
 # Real67 Studio
 
-MelGeek **Real67** klavye için gayriresmî ışık kontrol uygulaması. Klavyenin kendi RGB modları az ve sınırlı olduğu için yazıldı: 26 canlı efekt, 30 renk paleti ve ortam (mood) ışığı ayarı sunar.
+MelGeek **Real67** klavye için gayriresmî ışık kontrol uygulaması. Klavyenin kendi RGB modları az ve sınırlı olduğu için yazıldı: 32 canlı efekt, 30 renk paleti ve ortam (mood) ışığı ayarı sunar.
 
 Efektleri arka planda çalışan küçük bir servis oynatır. Tarayıcıyı kapatsanız da ışıklar akmaya devam eder, bilgisayar yeniden açıldığında kaldığı yerden sürer.
 
@@ -29,8 +29,8 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 
 ## Özellikler
 
-- **26 canlı efekt**, hepsinde parlaklık ayarı
-- **Tuşa tepki veren efektler** (Halkalar, Tuş izi, Yazma akışı, Havai fişek): hangi programda yazarsanız yazın çalışır
+- **32 canlı efekt**, hepsinde parlaklık ayarı
+- **Tuşa tepki veren efektler** (Halkalar, Tuş izi, Yazma akışı, Havai fişek, Lazer, Isı haritası): hangi programda yazarsanız yazın çalışır
 - **30 renk paleti**; palet kullanan her efektte seçilebilir
 - **Favoriler** ve **kısayol tuşları** (Ctrl+Alt+oklar)
 - **Ortam ışığı:** renk, mod, hız, parlaklık ve efektin rengine göre otomatik renk
@@ -58,11 +58,17 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 | Tuş izi | Bastığınız tuş yanar ve yavaşça söner |
 | Yazma akışı | Yazdıkça hızlanan ve parlayan, durunca yavaşlayan renk akışı |
 | Havai fişek | Bastığınız tuştan çevreye kıvılcımlar saçılır |
+| Lazer | Bastığınız tuştan sıra (ve sütun) boyunca ışın fırlar |
+| Isı haritası | Bastığınız tuşlar ısınır, çok kullanılan bölge renk değiştirir |
 | Lav lambası | Birleşip ayrılan renk damlaları |
 | Girdap | Merkez etrafında dönen renk sarmalı |
 | Kaleydoskop | Ortadan dört yana aynalanan, sürekli değişen renk deseni |
 | Mozaik | Yavaşça yer değiştiren renkli camlar, aralarında koyu derzler |
 | Sarmal | Birbirine dolanarak akan iki ışık şeridi |
+| Tünel | Merkezden dışarı (ya da içeri) akan renk halkaları |
+| Şeritler | Her sıra kendi yönünde ve hızında akar |
+| Gelgit | Klavyenin altını dolduran, yüzeyi dalgalanan su |
+| Sektirme | Kenarlardan seken, iz bırakan ışık topları |
 | Fırtına | Koyu bulutlar ve çakan şimşekler |
 | Kalp atışı | Merkezden çift vuruşla yayılan nabız |
 | Tarayıcı | Bir uçtan diğerine gidip gelen ışık çubuğu |
@@ -132,7 +138,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 - Servis her karede 67 tuşun rengini hesaplar ve klavyenin "Özel 7" renk slotuna yazar. Durduğunda klavyeyi önceki ışık moduna geri döndürür.
 - Efektler `web-app/js/effects.js` içinde tanımlıdır. Arayüzdeki önizleme ve servis aynı kodu kullanır; yeni efekt eklemek için bu dosyadaki `EFFECTS` dizisine bir kayıt eklemek yeterlidir.
 - Servis yalnızca `127.0.0.1:8667` üzerinde dinler; ağdaki başka cihazlar erişemez.
-- **Halkalar**, **Tuş izi**, **Yazma akışı** ve **Havai fişek** oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken yalnızca kısayol tuşlarına (Ctrl, Alt, oklar) bakılır.
+- Tuşa tepki veren efektler (Halkalar, Tuş izi, Yazma akışı, Havai fişek, Lazer, Isı haritası) oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken yalnızca kısayol tuşlarına (Ctrl, Alt, oklar) bakılır.
 
 ## Dosyalar
 
