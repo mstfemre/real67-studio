@@ -88,6 +88,30 @@ export function pollPresses() {
   return hits;
 }
 
+// ------------------------------------------------------------ kısayollar
+// Ctrl+Alt+← / →: önceki / sonraki efekt.  Ctrl+Alt+↑ / ↓: parlaklık (basılı tutunca tekrarlar).
+// Tuşlar yutulmaz (kanca yok): öndeki program da aynı tuşları görür. Shift ya da Win de basılıysa
+// kısayol sayılmaz; AltGr (Windows'ta Ctrl+Alt) da çalışır.
+const VK = { shift: 0x10, ctrl: 0x11, alt: 0x12, lwin: 0x5b, rwin: 0x5c };
+const HOTKEYS = [['prev', 0x25, false], ['next', 0x27, false], ['up', 0x26, true], ['down', 0x28, true]];
+const REPEAT_DELAY = 400, REPEAT_EVERY = 120; // ms
+
+// isDown ve now dışarıdan verilebilir (sınama için). Her çağrıda yeni basılan kısayolları döner.
+export function hotkeyReader(isDown = (vk) => (api.state(vk) & 0x8000) !== 0, now = Date.now) {
+  const held = new Map();
+  return () => {
+    const mods = isDown(VK.ctrl) && isDown(VK.alt) && !isDown(VK.shift) && !isDown(VK.lwin) && !isDown(VK.rwin);
+    const fired = [];
+    for (const [action, vk, repeat] of HOTKEYS) {
+      if (!mods || !isDown(vk)) { held.delete(action); continue; }
+      const t = now(), h = held.get(action);
+      if (!h) { held.set(action, { t0: t, last: t }); fired.push(action); }
+      else if (repeat && t - h.t0 >= REPEAT_DELAY && t - h.last >= REPEAT_EVERY) { h.last = t; fired.push(action); }
+    }
+    return fired;
+  };
+}
+
 // Efekt başlarken çağrılır: o ana kadar basılmış / basılı tuşlar halka başlatmasın
 export function resetPresses() {
   if (!api) return;

@@ -340,6 +340,69 @@ export const EFFECTS = [
     },
   },
   {
+    id: 'trail', name: 'Tuş izi', hint: 'Bastığın tuş yanar ve yavaşça söner. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true,
+    params: [
+      { key: 'fade', label: 'Solma süresi', type: 'range', min: 0.3, max: 4, step: 0.1, def: 1.4, unit: ' sn' },
+      { key: 'spread', label: 'Yayılma', type: 'range', min: 0, max: 100, step: 1, def: 35, unit: '%' },
+      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 25, unit: '%' },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'morotesi' },
+    ],
+    init(s) { s.v = new Float32Array(N); },
+    frame({ dt, p, out, s, presses }) {
+      // Her tuşun rengi zeminle aynı desenden gelir (paletin o konumdaki rengi), yalnızca tam parlak.
+      // Basılan tuş tam yanar, komşuları "Yayılma" oranında; sonra hepsi aynı hızla söner.
+      // Renkler toplanmaz (zemin ile ışık arasında geçiş), bu yüzden hızlı yazınca beyaza dönmez.
+      const spread = p.spread / 100;
+      for (const k of presses) {
+        s.v[k.i] = 1;
+        if (spread > 0) for (const n of KEYS) {
+          const d = Math.hypot(n.cx - k.cx, (n.cy - k.cy) * 1.15);
+          if (n !== k && d < 2.2) s.v[n.i] = Math.max(s.v[n.i], spread * (1 - d / 2.2) * 1.4);
+        }
+      }
+      // Doğrusal söner: çıkışa gama uygulandığı için göze de düzgün söner gibi görünür
+      // (üstel sönme gama ile ilk yarım saniyede kaybolur, "Solma süresi" anlamını yitirir).
+      const step = dt / p.fade;
+      const lvl = p.base / 100;
+      for (const k of KEYS) {
+        const v = (s.v[k.i] = Math.max(0, Math.min(1, s.v[k.i]) - step));
+        const c = pal(p.palette, k.cx / WIDTH_U), mx = Math.max(c[0], c[1], c[2], 0.001);
+        const keep = lvl * (1 - v);
+        put(out, k.i, [c[0] * keep + (c[0] / mx) * v, c[1] * keep + (c[1] / mx) * v, c[2] * keep + (c[2] / mx) * v]);
+      }
+    },
+  },
+  {
+    id: 'typeflow', name: 'Yazma akışı', hint: 'Yazdıkça hızlanan ve parlayan, durunca yavaşlayan renk akışı.',
+    needsKeys: true,
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 0.5, step: 0.01, def: 0.06 },
+      { key: 'boost', label: 'Hızlanma', type: 'range', min: 0, max: 100, step: 1, def: 50, unit: '%' },
+      { key: 'idle', label: 'Boşta parlaklık', type: 'range', min: 10, max: 100, step: 1, def: 45, unit: '%' },
+      { key: 'scale', label: 'Bant genişliği', type: 'range', min: 0.3, max: 3, step: 0.05, def: 1 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'tamspektrum' },
+    ],
+    init(s) { s.ph = 0; s.rate = 0; s.lvl = 0; s.v = new Float32Array(N); },
+    frame({ dt, p, out, s, presses }) {
+      // s.rate: son ~1 sn'deki yazma hızı (tuş/sn), yumuşatılmış. Akış hızı ve parlaklık ona göre
+      // artar; yazmayı bırakınca birkaç saniyede yavaşça eski hâline döner (sıçrama, yanıp sönme yok).
+      const TAU = 0.9;
+      s.rate = s.rate * Math.exp(-dt / TAU) + presses.length / TAU;
+      const heat = clamp(s.rate / 7); // ~7 tuş/sn (hızlı yazma) = tam
+      s.lvl += (heat - s.lvl) * (1 - Math.exp(-dt / 0.6));
+      s.ph += dt * (p.speed + (p.boost / 100) * 1.2 * s.lvl * s.lvl);
+      for (const k of presses) s.v[k.i] = 1;
+      const kf = Math.pow(0.02, dt / 0.6);
+      const bright = p.idle / 100 + (1 - p.idle / 100) * s.lvl;
+      for (const k of KEYS) {
+        const v = (s.v[k.i] *= kf);
+        // basılan tuş kısa bir an tam parlaklığa çıkar
+        put(out, k.i, pal(p.palette, k.cx / WIDTH_U / p.scale - s.ph), bright * (1 - v) + v);
+      }
+    },
+  },
+  {
     id: 'lava', name: 'Lav lambası', hint: 'Yavaşça birleşip ayrılan renk damlaları.',
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 2, step: 0.01, def: 0.4 },

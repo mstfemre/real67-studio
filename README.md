@@ -53,6 +53,8 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 | Kayan gradyan | Seçtiğiniz üç renk yatay olarak akar |
 | Kuyruklu yıldız | Sıralar boyunca kayan yıldızlar ve izleri |
 | Halkalar | Bastığınız tuştan yayılan su halkaları (hangi programda yazarsanız yazın) |
+| Tuş izi | Bastığınız tuş yanar ve yavaşça söner |
+| Yazma akışı | Yazdıkça hızlanan ve parlayan, durunca yavaşlayan renk akışı |
 | Lav lambası | Birleşip ayrılan renk damlaları |
 | Girdap | Merkez etrafında dönen renk sarmalı |
 | Fırtına | Koyu bulutlar ve çakan şimşekler |
@@ -92,6 +94,15 @@ Kaldırmak için `kaldir.bat` dosyasını çalıştırın. Servisi durdurur ve k
 - Arayüzü Başlat menüsünden **Real67 Studio** ile ya da <http://localhost:8667> adresinden açın. Chrome, Edge, Firefox ve Zen'de çalışır.
 - Bir efekt kartına tıklayın; klavyede hemen oynar.
 - Hız, parlaklık, palet ve renk değişiklikleri anında uygulanır.
+- **★ Favorilere ekle** efekti o anki ayarlarıyla kaydeder; efekt listesinin üstündeki favori kartına tıklayınca aynen oynar. Favoriler tarayıcıda saklanır.
+- **Kısayollar** (arayüz kapalıyken de çalışır):
+
+  | Tuşlar | Ne yapar |
+  |---|---|
+  | Ctrl+Alt+→ / ← | Sonraki / önceki efekt (her efekt son ayarlarıyla gelir) |
+  | Ctrl+Alt+↑ / ↓ | Oynayan efektin parlaklığını artırır / azaltır (basılı tutunca sürer) |
+
+  Kısayol tuşları öndeki programa da gider; o programda aynı tuşların bir görevi varsa o da çalışır (ör. VS Code'da Ctrl+Alt+↑ / ↓ imleç ekler).
 - Tarayıcıyı kapatabilirsiniz; efekt arka planda sürer.
 - Servis çalışmıyorken ya da bilgisayar kapalıyken klavye kendi belleğindeki ışığı gösterir.
 
@@ -115,7 +126,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 - Servis her karede 67 tuşun rengini hesaplar ve klavyenin "Özel 7" renk slotuna yazar. Durduğunda klavyeyi önceki ışık moduna geri döndürür.
 - Efektler `web-app/js/effects.js` içinde tanımlıdır. Arayüzdeki önizleme ve servis aynı kodu kullanır; yeni efekt eklemek için bu dosyadaki `EFFECTS` dizisine bir kayıt eklemek yeterlidir.
 - Servis yalnızca `127.0.0.1:8667` üzerinde dinler; ağdaki başka cihazlar erişemez.
-- **Halkalar** efekti oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken tuşlara hiç bakılmaz.
+- **Halkalar**, **Tuş izi** ve **Yazma akışı** oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken yalnızca kısayol tuşlarına (Ctrl, Alt, oklar) bakılır.
 
 ## Dosyalar
 

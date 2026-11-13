@@ -266,6 +266,20 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 28px 80px; }
   box-shadow: 0 0 0 1px var(--accent), 0 16px 30px -18px rgb(var(--glow)), inset 0 1px 0 rgba(255, 255, 255, .12);
 }
 .fx-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* favoriler: efekt kartlarının aynısı, köşede silme düğmesi */
+.favs-title { margin: 0 0 10px; font-size: .8125rem; font-weight: 600; color: var(--ink-3); }
+.fav { position: relative; display: flex; }
+.fav > .fx { flex: 1; min-width: 0; }
+.fav > .fx b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 26px; }
+.fav-del {
+  appearance: none; position: absolute; right: 6px; bottom: 7px; width: 24px; height: 24px; padding: 0; cursor: pointer;
+  border: 0; border-radius: 7px; background: transparent; color: var(--ink-3);
+  font-size: 1.05rem; line-height: 1; opacity: 0; transition: opacity .14s, background .14s, color .14s;
+}
+.fav:hover .fav-del, .fav-del:focus-visible { opacity: 1; }
+.fav-del:hover { background: color-mix(in srgb, #e5484d 22%, transparent); color: var(--ink); }
+@media (hover: none) { .fav-del { opacity: 1; } }
+.param-actions { margin-top: 14px; margin-bottom: 0; }
 /* sol sütun: efekt galerisi + ortam ışığı */
 .fx-main { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .fx-main .mood-card { padding: 20px 22px 22px; }

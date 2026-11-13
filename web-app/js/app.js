@@ -267,8 +267,8 @@ function drawMinis(ts) {
   if (app.tab !== 'live' || ts - miniT < 66) return;
   const dt = (ts - (miniT || ts)) / 1000; miniT = ts;
   const t = ts / 1000;
-  for (const m of minis) {
-    const p = paramsFor(m.fx);
+  for (const m of minis.concat(favMinis)) {
+    const p = m.params ?? paramsFor(m.fx); // favoriler kendi kayıtlı ayarlarıyla oynar
     // küçük önizlemede basışa tepki veren efektler için örnek basışlar
     const presses = (m.fx.needsKeys || m.fx.id === 'reactive') && Math.random() < 0.08 ? [KEYS[(Math.random() * KEY_COUNT) | 0]] : [];
     m.fx.frame({ t, dt, p, out: m.out, s: m.st, presses, audio: null, screen: null });
@@ -283,6 +283,61 @@ function drawMinis(ts) {
   }
 }
 requestAnimationFrame(drawMinis);
+
+// ------------------------------------------------------------ favoriler
+// Bir efekt, o anki ayarlarıyla (palet, hız, renkler…) kaydedilir; kartına tıklamak onu aynen oynatır.
+// Bu tarayıcıda saklanır (efekt ayarları gibi). Liste boşken bölüm hiç görünmez.
+const FAV_MAX = 12;
+store.favs = Array.isArray(store.favs) ? store.favs.filter((f) => VISIBLE_EFFECTS.some((x) => x.id === f.fxId)) : [];
+const favMinis = [];
+const sameParams = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function favName(fx, p) {
+  const pal = fx.params.find((q) => q.options === PALETTE_OPTS);
+  const base = pal ? `${fx.name} · ${PALETTE_OPTS.find((o) => o[0] === p[pal.key])?.[1] ?? ''}` : fx.name;
+  let name = base;
+  for (let n = 2; store.favs.some((f) => f.name === name); n++) name = `${base} ${n}`;
+  return name;
+}
+function addFavorite(fx) {
+  const params = { ...paramsFor(fx) };
+  if (store.favs.some((f) => f.fxId === fx.id && sameParams(f.params, params))) return toast('Bu ayar zaten favorilerde');
+  if (store.favs.length >= FAV_MAX) return toast(`En çok ${FAV_MAX} favori olabilir; önce birini sil`, true);
+  const fav = { id: Date.now().toString(36), fxId: fx.id, name: favName(fx, params), params };
+  store.favs.push(fav); saveStore(); renderFavs();
+  toast(`Favorilere eklendi: ${fav.name}`);
+}
+function removeFavorite(id) {
+  store.favs = store.favs.filter((f) => f.id !== id); saveStore(); renderFavs();
+}
+async function playFavorite(fav) {
+  const fx = VISIBLE_EFFECTS.find((f) => f.id === fav.fxId);
+  if (!fx) return;
+  store.params[fx.id] = cleanParams(fx, fav.params); merged.add(fx.id); saveStore();
+  await playEffect(fx);
+}
+function renderFavs() {
+  const list = $('#favList');
+  list.replaceChildren(); favMinis.length = 0;
+  $('#favBox').hidden = !store.favs.length;
+  for (const fav of store.favs) {
+    const fx = VISIBLE_EFFECTS.find((f) => f.id === fav.fxId);
+    const wrap = document.createElement('div'); wrap.className = 'fav';
+    const b = document.createElement('button');
+    b.className = 'fx'; b.type = 'button'; b.title = fav.name;
+    const cv = document.createElement('canvas'); cv.width = 224; cv.height = 72;
+    b.append(cv, Object.assign(document.createElement('b'), { textContent: fav.name }));
+    b.addEventListener('click', () => guard(() => playFavorite(fav)));
+    const del = Object.assign(document.createElement('button'), { className: 'fav-del', type: 'button', textContent: '×', title: 'Favorilerden çıkar' });
+    del.setAttribute('aria-label', `${fav.name} favorisini sil`);
+    del.addEventListener('click', () => removeFavorite(fav.id));
+    wrap.append(b, del);
+    list.append(wrap);
+    const st = {}; fx.init?.(st);
+    favMinis.push({ fx, params: cleanParams(fx, fav.params), cv, ctx: cv.getContext('2d'), st, out: new Float32Array(KEY_COUNT * 3) });
+  }
+}
+renderFavs();
 
 function selectEffect(fx) {
   app.fx = fx; store.fxId = fx.id; saveStore();
@@ -352,7 +407,11 @@ function renderParams(fx) {
   }
   const reset = Object.assign(document.createElement('button'), { className: 'btn', textContent: 'Varsayılanlara dön' });
   reset.addEventListener('click', () => { store.params[fx.id] = defaultsFor(fx); merged.add(fx.id); saveStore(); engine.setEffect(fx, paramsFor(fx)); renderParams(fx); });
-  box.append(reset);
+  const fav = Object.assign(document.createElement('button'), { className: 'btn', type: 'button', textContent: '★ Favorilere ekle' });
+  fav.addEventListener('click', () => addFavorite(fx));
+  const row = document.createElement('div'); row.className = 'row param-actions';
+  row.append(fav, reset);
+  box.append(row);
 }
 
 // genel ayarlar
@@ -403,19 +462,31 @@ async function svcPoll() {
   // Tersi yapılmaz: yeni açılan bir sekme kendi eski ayarlarını servise dayatmamalı.
   if (svc.ok && !svc.synced) {
     svc.synced = true;
+    svc.seenRev = svc.rev;
     const fx = svc.playing && svc.cfg && VISIBLE_EFFECTS.find((f) => f.id === svc.cfg.fxId);
     if (fx) {
-      store.params[fx.id] = svc.cfg.params; merged.delete(fx.id);
       store.master = Math.round(svc.cfg.master * 100); engine.master = svc.cfg.master;
       store.gamma = engine.gamma = svc.cfg.gamma;
       store.fps = svc.cfg.fps; engine.setFps(svc.cfg.fps);
       $('#master').value = store.master; $('#masterOut').textContent = store.master + '%';
       $('#gamma').checked = engine.gamma; $('#fps').value = String(store.fps);
-      saveStore();
-      svc.quiet = true;
-      try { selectEffect(fx); } finally { svc.quiet = false; }
+      adoptServiceEffect(fx);
     }
   }
+  // Kısayolla (Ctrl+Alt+ok) değişen efekt / parlaklık ekrana da yansısın.
+  // Arayüzün kendi gönderdikleri (source 'ui') yeniden uygulanmaz: kaydırıcıyı sürüklerken ekran sıçramasın.
+  if (svc.ok && svc.rev !== svc.seenRev) {
+    svc.seenRev = svc.rev;
+    const fx = svc.revSource === 'hotkey' && svc.playing && svc.cfg && VISIBLE_EFFECTS.find((f) => f.id === svc.cfg.fxId);
+    if (fx) adoptServiceEffect(fx);
+  }
+}
+// Servisin oynattığı efekti ve ayarlarını arayüze al (servise geri gönderilmez)
+function adoptServiceEffect(fx) {
+  store.params[fx.id] = { ...svc.cfg.params }; merged.delete(fx.id);
+  saveStore();
+  svc.quiet = true;
+  try { selectEffect(fx); } finally { svc.quiet = false; }
 }
 // Oynarken yapılan her ayar değişikliği servise iletilir
 let svcT;

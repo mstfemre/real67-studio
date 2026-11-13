@@ -18,7 +18,7 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
-import { pollPresses, resetPresses, keysAvailable } from './keys.mjs';
+import { pollPresses, resetPresses, keysAvailable, hotkeyReader } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
 
@@ -239,11 +239,16 @@ function resume() {
   if (!P.paused) return;
   P.paused = false;
   log('Servis devam ediyor');
-  if (persisted.playing) { try { play(persisted.playing); } catch (e) { log('Efekt sürdürülemedi:', e.message); } }
+  if (persisted.playing) { try { play(persisted.playing, 'service'); } catch (e) { log('Efekt sürdürülemedi:', e.message); } }
   else if (persisted.mood.kind !== 'off') connect();
 }
 
-function play(raw) {
+// Oynayan ayar her değiştiğinde artar. Arayüz, kısayolla yapılan değişikliği (source 'hotkey')
+// bundan anlar ve kendi ekranını ona uydurur.
+const REV = { n: 0, source: null };
+
+// source: 'ui' (arayüz), 'hotkey' (kısayol), 'service' (servisin kendisi: açılış, devam)
+function play(raw, source = 'ui') {
   P.paused = false; // bir efekte tıklamak duraklatmayı da bitirir
   const cfg = sanitize(raw);
   if (!S.fx || S.fx.id !== cfg.fxId) {
@@ -253,7 +258,11 @@ function play(raw) {
     if (S.fx.needsKeys) resetPresses();
   }
   S.cfg = cfg;
-  persisted.playing = cfg; persist();
+  persisted.playing = cfg;
+  persisted.last = { master: cfg.master, gamma: cfg.gamma, fps: cfg.fps };
+  (persisted.fxParams ??= {})[cfg.fxId] = cfg.params; // kısayolla o efekte dönünce aynı ayarlarla gelsin
+  persist();
+  REV.n++; REV.source = source;
   if (!S.timer) {
     S.last = performance.now();
     S.timer = setInterval(tick, TICK_MS);
@@ -263,6 +272,7 @@ function play(raw) {
 
 async function stop() {
   clearInterval(S.timer); S.timer = null;
+  if (S.cfg) persisted.lastFx = S.cfg.fxId; // kısayolla yeniden başlatınca kaldığı yerden
   S.cfg = null; S.fps = 0;
   persisted.playing = null; persist();
   await idle();
@@ -273,6 +283,34 @@ async function stop() {
     while (M.busy) await new Promise((r) => setTimeout(r, 5));
     const kb = S.kb; S.kb = null; S.prepared = false; await kb.close();
   }
+}
+
+// ------------------------------------------------------------ kısayollar
+// Ctrl+Alt+← / →: önceki / sonraki efekt (arayüzdeki sırayla). Ctrl+Alt+↑ / ↓: o efektin parlaklığı.
+// Arayüz açık olmasa da çalışır; arayüz açıksa ekranı kısayolla gelen ayara uyar.
+const SWITCHABLE = EFFECTS.filter((f) => !f.shelved);
+const BRIGHT_STEPS = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+function onHotkey(action) {
+  const cur = S.cfg;
+  if (action === 'prev' || action === 'next') {
+    const from = (cur || persisted.playing)?.fxId ?? persisted.lastFx;
+    const i = SWITCHABLE.findIndex((f) => f.id === from), n = SWITCHABLE.length;
+    const fx = SWITCHABLE[i < 0 ? 0 : (i + (action === 'next' ? 1 : n - 1)) % n];
+    const base = cur || persisted.last || {};
+    play({ ...base, fxId: fx.id, params: persisted.fxParams?.[fx.id] ?? {} }, 'hotkey');
+    return;
+  }
+  if (!cur) return; // efekt oynamıyorken parlaklık kısayolu bir şey yapmaz
+  const b = cur.params.brightness ?? 100;
+  const nb = action === 'up' ? BRIGHT_STEPS.find((v) => v > b) ?? 100 : [...BRIGHT_STEPS].reverse().find((v) => v < b) ?? 5;
+  if (nb !== b) play({ ...cur, params: { ...cur.params, brightness: nb } }, 'hotkey');
+}
+if (keysAvailable()) {
+  const readHotkeys = hotkeyReader();
+  setInterval(() => {
+    if (P.paused) return; // Hive açıkken klavyeye dokunma
+    for (const a of readHotkeys()) { try { onHotkey(a); } catch (e) { log('Kısayol uygulanamadı:', e.message); } }
+  }, 25);
 }
 
 // ------------------------------------------------------------ ortam ışığı: otomatik renk değişimi
@@ -437,7 +475,8 @@ function status() {
     present: S.kb ? true : !!findKeyboard(),
     fps: S.kb && S.cfg ? S.fps : 0,
     error: S.cfg && !S.kb ? S.error : null,
-    keys: keysAvailable(), // tuş basışları algılanabiliyor mu (Halkalar için)
+    keys: keysAvailable(), // tuş basışları algılanabiliyor mu (Halkalar, kısayollar için)
+    rev: REV.n, revSource: REV.source,
     mood: { ...persisted.mood, cur: M.cur },
   };
 }
@@ -504,7 +543,7 @@ server.listen(PORT, '127.0.0.1', () => {
   log(`Real67 Studio: http://localhost:${PORT}/  (kapatmak için Ctrl+C)`);
   if (!keysAvailable()) log('Tuş basışları algılanamıyor (koffi kurulu değil): Halkalar tepkisiz kalır. kur.bat ile yeniden kurun.');
   if (persisted.playing) {
-    try { play(persisted.playing); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
+    try { play(persisted.playing, 'service'); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
     catch (e) { persisted.playing = null; persist(); log('Kayıtlı efekt yüklenemedi:', e.message); }
   }
   if (persisted.mood.kind !== 'off') { connect(); log('Ortam ışığı otomatiği:', persisted.mood.kind); }
