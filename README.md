@@ -52,7 +52,7 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 | Radar | Merkez etrafında dönen tarama ışını |
 | Kayan gradyan | Seçtiğiniz üç renk yatay olarak akar |
 | Kuyruklu yıldız | Sıralar boyunca kayan yıldızlar ve izleri |
-| Halkalar | Rastgele noktalardan yayılan su halkaları |
+| Halkalar | Bastığınız tuştan yayılan su halkaları (hangi programda yazarsanız yazın) |
 | Lav lambası | Birleşip ayrılan renk damlaları |
 | Girdap | Merkez etrafında dönen renk sarmalı |
 | Fırtına | Koyu bulutlar ve çakan şimşekler |
@@ -78,7 +78,7 @@ Git yoksa bu sayfanın üstündeki yeşil **Code** düğmesinden **Download ZIP*
 
 **3. `kur.bat` dosyasına çift tıklayın.** Kurulum şunları yapar:
 
-- gerekli bağımlılığı (`node-hid`) indirir,
+- gerekli bağımlılıkları (`node-hid`, `koffi`) indirir,
 - Başlat menüsüne **Real67 Studio** kısayolu ekler,
 - Windows açılışında otomatik başlatmak isteyip istemediğinizi sorar,
 - servisi başlatır ve arayüzü tarayıcıda açar.
@@ -115,6 +115,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 - Servis her karede 67 tuşun rengini hesaplar ve klavyenin "Özel 7" renk slotuna yazar. Durduğunda klavyeyi önceki ışık moduna geri döndürür.
 - Efektler `web-app/js/effects.js` içinde tanımlıdır. Arayüzdeki önizleme ve servis aynı kodu kullanır; yeni efekt eklemek için bu dosyadaki `EFFECTS` dizisine bir kayıt eklemek yeterlidir.
 - Servis yalnızca `127.0.0.1:8667` üzerinde dinler; ağdaki başka cihazlar erişemez.
+- **Halkalar** efekti oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken tuşlara hiç bakılmaz.
 
 ## Dosyalar
 
@@ -128,7 +129,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 | `servisi-durdur.bat` | Servisi durdurur; klavye önceki ışığına döner |
 | `otomatik-baslat-ac.bat` / `-kapat.bat` | Windows açılışında başlatmayı açar / kapatır |
 | `web-app/` | Arayüz (HTML, CSS, JS), efektler ve protokol kodu |
-| `service/` | Arka plan servisi (Node.js + node-hid) |
+| `service/` | Arka plan servisi (Node.js + node-hid; tuş basışları için koffi) |
 
 ## Sınırlar
 

@@ -1,7 +1,7 @@
 @echo off
 rem Real67 Studio kurulumu. Format sonrasi ya da yeni bilgisayarda bir kez calistirin.
 rem  1) Node.js var mi diye bakar
-rem  2) Servisin bagimliligini (node-hid) kurar
+rem  2) Servisin bagimliliklarini (node-hid, koffi) kurar
 rem  3) Baslat menusune "Real67 Studio" kisayolu ekler
 rem  4) Isterseniz Windows acilisinda otomatik baslatmayi kurar
 rem  5) Servisi baslatip arayuzu acar

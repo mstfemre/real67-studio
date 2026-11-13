@@ -18,6 +18,7 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
+import { pollPresses, resetPresses, keysAvailable } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
 
@@ -175,7 +176,8 @@ async function tick() {
     const now = performance.now();
     const dt = Math.min(0.25, (now - S.last) / 1000);
     S.last = now;
-    S.fx.frame({ t: (now - S.t0) / 1000, dt, p: S.cfg.params, out, s: S.fxState, presses: [], audio: null, screen: null });
+    const presses = S.fx.needsKeys ? pollPresses() : []; // yalnızca basışa tepki veren efektlerde
+    S.fx.frame({ t: (now - S.t0) / 1000, dt, p: S.cfg.params, out, s: S.fxState, presses, audio: null, screen: null });
 
     const g = S.cfg.gamma ? 2.2 : 1, m = S.cfg.master * brightnessOf(S.cfg.params); // genel × efektin parlaklığı
     const full = !S.lastSent || now > S.resyncAt; // arada bir tam kare: kaçan paket olursa toparlar
@@ -248,6 +250,7 @@ function play(raw) {
     S.fx = EFFECTS.find((f) => f.id === cfg.fxId);
     S.fxState = {};
     S.fx.init?.(S.fxState);
+    if (S.fx.needsKeys) resetPresses();
   }
   S.cfg = cfg;
   persisted.playing = cfg; persist();
@@ -434,6 +437,7 @@ function status() {
     present: S.kb ? true : !!findKeyboard(),
     fps: S.kb && S.cfg ? S.fps : 0,
     error: S.cfg && !S.kb ? S.error : null,
+    keys: keysAvailable(), // tuş basışları algılanabiliyor mu (Halkalar için)
     mood: { ...persisted.mood, cur: M.cur },
   };
 }
@@ -498,6 +502,7 @@ server.on('error', (e) => {
 });
 server.listen(PORT, '127.0.0.1', () => {
   log(`Real67 Studio: http://localhost:${PORT}/  (kapatmak için Ctrl+C)`);
+  if (!keysAvailable()) log('Tuş basışları algılanamıyor (koffi kurulu değil): Halkalar tepkisiz kalır. kur.bat ile yeniden kurun.');
   if (persisted.playing) {
     try { play(persisted.playing); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
     catch (e) { persisted.playing = null; persist(); log('Kayıtlı efekt yüklenemedi:', e.message); }

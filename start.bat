@@ -13,8 +13,11 @@ if errorlevel 1 (
   python web-app\serve.py %PORT%
   goto :eof
 )
-if not exist service\node_modules\node-hid (
-  echo Ilk kurulum: bagimliliklar yukleniyor...
+set NEEDINSTALL=
+if not exist service\node_modules\node-hid set NEEDINSTALL=1
+if not exist service\node_modules\koffi set NEEDINSTALL=1
+if defined NEEDINSTALL (
+  echo Bagimliliklar yukleniyor...
   pushd service
   call npm install --no-audit --no-fund
   popd

@@ -5,9 +5,12 @@ import {
 import { KEYS, KEY_BY_CODE, WIDTH_U, HEIGHT_U } from './layout.js';
 import { EFFECTS, defaultsFor, hsv, pal, PALETTE_OPTS, hexToRgb, paletteCss, brightnessOf } from './effects.js';
 import { Engine } from './engine.js';
+import { colorControl, enhanceColorInput, closeColorPicker } from './colorpicker.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+// Sayfadaki renk alanları tarayıcının renk penceresi yerine uygulamanın kendi seçicisini kullanır
+$$('input[type="color"]').forEach(enhanceColorInput);
 const LIVE_SLOT = 6; // Özel 7
 
 // ------------------------------------------------------------ durum
@@ -266,7 +269,8 @@ function drawMinis(ts) {
   const t = ts / 1000;
   for (const m of minis) {
     const p = paramsFor(m.fx);
-    const presses = m.fx.id === 'reactive' && Math.random() < 0.08 ? [KEYS[(Math.random() * KEY_COUNT) | 0]] : [];
+    // küçük önizlemede basışa tepki veren efektler için örnek basışlar
+    const presses = (m.fx.needsKeys || m.fx.id === 'reactive') && Math.random() < 0.08 ? [KEYS[(Math.random() * KEY_COUNT) | 0]] : [];
     m.fx.frame({ t, dt, p, out: m.out, s: m.st, presses, audio: null, screen: null });
     const { ctx, cv } = m;
     ctx.fillStyle = '#0b0c0f'; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -300,6 +304,7 @@ function paletteStrip(id, name) {
 }
 
 function renderParams(fx) {
+  closeColorPicker();
   const box = $('#fxParams'); box.innerHTML = '';
   const p = paramsFor(fx);
   for (const q of fx.params) {
@@ -314,9 +319,9 @@ function renderParams(fx) {
       input.addEventListener('input', () => { p[q.key] = +input.value; fmt(); saveStore(); });
       lab.append(Object.assign(document.createElement('span'), { textContent: q.label }), input, out);
     } else if (q.type === 'color') {
-      input = Object.assign(document.createElement('input'), { type: 'color', value: p[q.key] });
-      input.addEventListener('input', () => { p[q.key] = input.value; saveStore(); });
-      lab.append(Object.assign(document.createElement('span'), { textContent: q.label }), input);
+      // 'input' olayı #fxParams'taki dinleyiciye ulaşır: oynarken renk servise de gider
+      const ctl = colorControl(p[q.key], (hex) => { p[q.key] = hex; saveStore(); ctl.el.dispatchEvent(new Event('input', { bubbles: true })); });
+      lab.append(Object.assign(document.createElement('span'), { textContent: q.label }), ctl.el);
     } else if (q.type === 'select' && q.options === PALETTE_OPTS) {
       // Palet: isim listesi yerine renk şeritleri
       const wrap = document.createElement('div'); wrap.className = 'pal-field';

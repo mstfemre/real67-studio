@@ -66,10 +66,11 @@ const PALETTES = {
   tamspektrum: ['#d400ff', '#0020ff', '#00e5ff', '#00ff3c', '#fff200', '#ff8a00', '#ff1a1a'].map(hexToRgb),
 };
 export const PALETTE_OPTS = [
-  ['gokkusagi', 'Gökkuşağı'], ['aurora', 'Aurora'], ['okyanus', 'Okyanus'], ['gunbatimi', 'Gün batımı'],
-  ['orman', 'Orman'], ['lav', 'Lav'], ['siber', 'Siber'],
-  ['kizil', 'Kızıl gece'], ['mavikizil', 'Mavi kızıl'], ['gece', 'Gece yarısı'], ['seftali', 'Şeftali'],
-  ['limonbuz', 'Limon buz'], ['saripembe', 'Sarı pembe'], ['morotesi', 'Mor ötesi'], ['tamspektrum', 'Tam spektrum'],
+  // Görünen adlar İngilizce (kullanıcının isteği); kimlikler (ilk sütun) kayıtlı ayarlarda geçtiği için değişmez.
+  ['gokkusagi', 'Prism'], ['aurora', 'Borealis'], ['okyanus', 'Abyss'], ['gunbatimi', 'Afterglow'],
+  ['orman', 'Venom'], ['lav', 'Magma'], ['siber', 'Cyberpunk'],
+  ['kizil', 'Bloodmoon'], ['mavikizil', 'Synthwave'], ['gece', 'Eclipse'], ['seftali', 'Solar Flare'],
+  ['limonbuz', 'Mojito'], ['saripembe', 'Miami Vice'], ['morotesi', 'Ultraviolet'], ['tamspektrum', 'Hyperspace'],
 ];
 export function paletteCss(name) {
   const stops = [];
@@ -296,24 +297,45 @@ export const EFFECTS = [
     },
   },
   {
-    id: 'ripples', name: 'Halkalar', hint: 'Rastgele noktalardan suya düşen damla gibi yayılan halkalar.',
+    id: 'ripples', name: 'Halkalar', hint: 'Bastığın tuştan su halkası yayılır. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true, // servis tuş basışlarını yoklar (service/keys.mjs); kendiliğinden halka çıkmaz
     params: [
-      { key: 'speed', label: 'Hız', type: 'range', min: 2, max: 20, step: 0.5, def: 8 },
-      { key: 'rate', label: 'Sıklık', type: 'range', min: 0.2, max: 5, step: 0.1, def: 1.4 },
+      { key: 'speed', label: 'Hız', type: 'range', min: 2, max: 24, step: 0.5, def: 10 },
+      { key: 'width', label: 'Halka kalınlığı', type: 'range', min: 0.8, max: 3, step: 0.1, def: 1.6 },
+      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 30, unit: '%' },
       { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'okyanus' },
     ],
-    init(s) { s.drops = []; },
-    frame({ dt, p, out, s }) {
-      if (Math.random() < p.rate * dt && s.drops.length < 12) s.drops.push({ x: Math.random() * WIDTH_U, y: Math.random() * HEIGHT_U, r: 0, col: pal(p.palette, Math.random()) });
+    init(s) { s.drops = []; s.hue = Math.random(); },
+    frame({ dt, p, out, s, presses }) {
+      // Her basış, basılan tuşun yerinden bir halka başlatır: kalın, yumuşak kenarlı, arkasından
+      // zayıf ikinci bir tepe gelir. Zemin, paletin arayüzdeki şeritte görünen deseninin aynısıdır
+      // (soldan sağa tüm palet), yalnızca daha loş; yazmayınca sakin kalır.
+      const MAXR = 19, w = p.width; // klavyenin köşegeni ~17u: halka her tuştan karşı kenara ulaşır
+      for (const k of presses) {
+        s.hue = fract(s.hue + 0.381966); // art arda basışlar paletin farklı yerlerinden renk alır
+        const c = pal(p.palette, s.hue), mx = Math.max(c[0], c[1], c[2], 0.001);
+        s.drops.push({ x: k.cx, y: k.cy, r: 0, col: [c[0] / mx, c[1] / mx, c[2] / mx] }); // koyu palet rengi de parlak halka verir
+      }
+      if (s.drops.length > 32) s.drops.splice(0, s.drops.length - 32);
       for (const d of s.drops) d.r += p.speed * dt;
-      s.drops = s.drops.filter((d) => d.r < 15);
+      s.drops = s.drops.filter((d) => d.r < MAXR);
+      const lvl = p.base / 100;
       for (const k of KEYS) {
-        let r = 0, g = 0, b = 0;
+        // Üst üste binen halkalar renkleri TOPLAMAZ (toplanınca her kanal dolup beyaza dönüyordu):
+        // tuşun rengini o anda en güçlü olan halka belirler (v^12 ağırlık: neredeyse "kazanan alır",
+        // ama halkalar kesişirken renk sıçramaz), yalnızca yoğunluk birikir. Düz ortalama da olmaz:
+        // gökkuşağı gibi paletlerde zıt renklerin ortalaması yine beyaza yakın çıkıyor.
+        let r = 0, g = 0, b = 0, wsum = 0, dark = 1;
         for (const d of s.drops) {
-          const v = Math.max(0, 1 - Math.abs(Math.hypot(k.cx - d.x, k.cy - d.y) - d.r) / 1.1) * (1 - d.r / 15);
-          r += d.col[0] * v; g += d.col[1] * v; b += d.col[2] * v;
+          const e = (Math.hypot(k.cx - d.x, k.cy - d.y) - d.r) / w;
+          const fade = Math.sqrt(1 - d.r / MAXR);
+          const v = Math.min(1, (Math.exp(-e * e) + 0.4 * Math.exp(-((e + 2.3) ** 2))) * fade);
+          if (v < 0.004) continue;
+          const wt = Math.pow(v, 12);
+          r += d.col[0] * wt; g += d.col[1] * wt; b += d.col[2] * wt; wsum += wt; dark *= 1 - v;
         }
-        put(out, k.i, [clamp(r), clamp(g), clamp(b)]);
+        const base = pal(p.palette, k.cx / WIDTH_U), keep = lvl * dark, hit = wsum ? (1 - dark) / wsum : 0;
+        put(out, k.i, [base[0] * keep + r * hit, base[1] * keep + g * hit, base[2] * keep + b * hit]);
       }
     },
   },
