@@ -9,3 +9,6 @@ service/servis.log
 # editör / araç ayarları
 .claude/
 .vscode/
+
+# test çıktısı (bu bilgisayara özel)
+service/klavye-testi-sonuc.json

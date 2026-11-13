@@ -130,6 +130,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 | `otomatik-baslat-ac.bat` / `-kapat.bat` | Windows açılışında başlatmayı açar / kapatır |
 | `web-app/` | Arayüz (HTML, CSS, JS), efektler ve protokol kodu |
 | `service/` | Arka plan servisi (Node.js + node-hid; tuş basışları için koffi) |
+| `service/klavye-testi.mjs` | Işık akışının 8K raporlamayı / gecikmeyi etkileyip etkilemediğini ölçer: `node service/klavye-testi.mjs` |
 
 ## Sınırlar
 
