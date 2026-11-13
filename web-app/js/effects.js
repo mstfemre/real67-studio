@@ -422,6 +422,53 @@ export const EFFECTS = [
     },
   },
   {
+    id: 'fireworks', name: 'Havai fişek', hint: 'Bastığın tuştan kıvılcımlar saçılır. Hangi programda yazarsan yaz çalışır.',
+    needsKeys: true,
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 3, max: 20, step: 0.5, def: 9 },
+      { key: 'count', label: 'Kıvılcım sayısı', type: 'range', min: 4, max: 14, step: 1, def: 8 },
+      { key: 'life', label: 'Ömür', type: 'range', min: 0.4, max: 2.5, step: 0.1, def: 1.1, unit: ' sn' },
+      { key: 'base', label: 'Zemin ışığı', type: 'range', min: 0, max: 70, step: 1, def: 20, unit: '%' },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'tamspektrum' },
+    ],
+    init(s) { s.sparks = []; s.hue = Math.random(); },
+    frame({ dt, p, out, s, presses }) {
+      // Her basış, tuşun yerinden çevreye saçılan kıvılcımlar çıkarır; kıvılcımlar yavaşlayarak
+      // ilerler ve doğrusal söner. Kendiliğinden patlama yoktur. Zemin Halkalar'daki gibidir
+      // (paletin soldan sağa deseni, loş).
+      for (const k of presses) {
+        s.hue = fract(s.hue + 0.381966); // art arda basışlar paletin farklı yerlerinden renk alır
+        const a0 = Math.random() * Math.PI * 2;
+        for (let i = 0; i < p.count; i++) {
+          const a = a0 + (i / p.count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+          const c = pal(p.palette, s.hue + (Math.random() - 0.5) * 0.08), mx = Math.max(c[0], c[1], c[2], 0.001);
+          const v = p.speed * (0.6 + Math.random() * 0.6);
+          // klavye 5 sıra yüksekliğinde: dikey hız kısılır, yoksa kıvılcımların yarısı hemen dışarı çıkar
+          s.sparks.push({ x: k.cx, y: k.cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.55, age: 0, col: [c[0] / mx, c[1] / mx, c[2] / mx] });
+        }
+      }
+      if (s.sparks.length > 320) s.sparks.splice(0, s.sparks.length - 320);
+      const drag = Math.pow(0.12, dt);
+      for (const q of s.sparks) { q.age += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= drag; q.vy *= drag; }
+      s.sparks = s.sparks.filter((q) => q.age < p.life);
+      const lvl = p.base / 100;
+      for (const k of KEYS) {
+        // Renkler toplanmaz (Halkalar'daki yöntem): rengi en güçlü kıvılcım belirler, yoğunluk birikir.
+        let r = 0, g = 0, b = 0, wsum = 0, dark = 1;
+        for (const q of s.sparks) {
+          const dx = k.cx - q.x, dy = (k.cy - q.y) * 1.15, d2 = dx * dx + dy * dy;
+          if (d2 > 3) continue;
+          const v = Math.exp(-d2 / 0.5) * (1 - q.age / p.life);
+          if (v < 0.004) continue;
+          const wt = Math.pow(v, 6);
+          r += q.col[0] * wt; g += q.col[1] * wt; b += q.col[2] * wt; wsum += wt; dark *= 1 - v;
+        }
+        const base = pal(p.palette, k.cx / WIDTH_U), keep = lvl * dark, hit = wsum ? (1 - dark) / wsum : 0;
+        put(out, k.i, [base[0] * keep + r * hit, base[1] * keep + g * hit, base[2] * keep + b * hit]);
+      }
+    },
+  },
+  {
     id: 'lava', name: 'Lav lambası', hint: 'Yavaşça birleşip ayrılan renk damlaları.',
     params: [
       { key: 'speed', label: 'Hız', type: 'range', min: 0.05, max: 2, step: 0.01, def: 0.4 },
@@ -454,6 +501,80 @@ export const EFFECTS = [
       for (const k of KEYS) {
         const dx = k.cx - CX, dy = (k.cy - CY) * 2.2;
         put(out, k.i, pal(p.palette, (Math.atan2(dy, dx) / (Math.PI * 2)) * p.arms + Math.hypot(dx, dy) * p.twist * 0.2 - s.ph));
+      }
+    },
+  },
+  {
+    id: 'kaleido', name: 'Kaleydoskop', hint: 'Ortadan dört yana aynalanan, sürekli değişen renk deseni.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.5 },
+      { key: 'zoom', label: 'Doku', type: 'range', min: 0.1, max: 0.8, step: 0.01, def: 0.3 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'siber' },
+    ],
+    frame({ t, p, out }) {
+      for (const k of KEYS) {
+        // merkeze göre mutlak uzaklık: desen sol-sağ ve üst-alt simetrik olur
+        const x = Math.abs(k.cx - CX) * p.zoom, y = Math.abs(k.cy - CY) * p.zoom * 2;
+        const n = noise3(x, y, t * p.speed * 0.4);
+        const m = noise3(x * 0.6 + 40, y * 0.6 + 9, t * p.speed * 0.25);
+        put(out, k.i, pal(p.palette, n * 1.5 + t * p.speed * 0.04), 0.3 + 0.7 * clamp(m * 1.5 - 0.1));
+      }
+    },
+  },
+  {
+    id: 'mosaic', name: 'Mozaik', hint: 'Yavaşça yer değiştiren renkli camlar; aralarında koyu derzler.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.4 },
+      { key: 'count', label: 'Parça sayısı', type: 'range', min: 3, max: 10, step: 1, def: 6 },
+      { key: 'edge', label: 'Derz kalınlığı', type: 'range', min: 0, max: 2, step: 0.05, def: 0.8 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'gunbatimi' },
+    ],
+    init(s) { s.ph = Math.random() * 50; },
+    frame({ dt, p, out, s }) {
+      // Voronoi: her tuş en yakın "merkez"in rengini alır. İki merkeze eşit uzaklıktaki tuşlar
+      // (parça sınırı) kararır; merkezler kayarken renk bu koyu derzden geçerek değişir, sıçramaz.
+      s.ph += dt * p.speed;
+      const n = p.count, sx = [], sy = [];
+      for (let i = 0; i < n; i++) {
+        sx.push(CX + Math.sin(s.ph * (0.31 + i * 0.07) + i * 2.4) * CX * 0.95);
+        sy.push(CY + Math.cos(s.ph * (0.43 + i * 0.05) + i * 1.7) * CY * 0.9);
+      }
+      for (const k of KEYS) {
+        let d1 = 1e9, d2 = 1e9, idx = 0;
+        for (let i = 0; i < n; i++) {
+          const d = Math.hypot(k.cx - sx[i], (k.cy - sy[i]) * 1.6);
+          if (d < d1) { d2 = d1; d1 = d; idx = i; } else if (d < d2) d2 = d;
+        }
+        const e = p.edge > 0 ? sm(clamp((d2 - d1) / p.edge)) : 1;
+        put(out, k.i, pal(p.palette, idx / n + s.ph * 0.015), 0.12 + 0.88 * e);
+      }
+    },
+  },
+  {
+    id: 'helix', name: 'Sarmal', hint: 'Birbirine dolanarak akan iki ışık şeridi.',
+    params: [
+      { key: 'speed', label: 'Hız', type: 'range', min: 0, max: 2, step: 0.01, def: 0.5 },
+      { key: 'wave', label: 'Dalga boyu', type: 'range', min: 5, max: 18, step: 0.5, def: 11 },
+      { key: 'thick', label: 'Kalınlık', type: 'range', min: 0.5, max: 1.6, step: 0.05, def: 0.8 },
+      { key: 'palette', label: 'Palet', type: 'select', options: PALETTE_OPTS, def: 'aurora' },
+    ],
+    init(s) { s.ph = 0; },
+    frame({ dt, p, out, s }) {
+      // İki sinüs şeridi zıt fazda akar; cos(a) "öndeki / arkadaki" şeridi belirler (arkadaki loş).
+      // Kesiştikleri yerde renkler toplanmaz: güçlü olan şeridin rengi kazanır.
+      s.ph += dt * p.speed;
+      const amp = HEIGHT_U / 2 - 0.5;
+      for (const k of KEYS) {
+        const a = (k.cx / p.wave - s.ph) * Math.PI * 2, sn = Math.sin(a), cs = Math.cos(a);
+        // Şerit dikleştikçe dikey kalınlık artırılır: eğriye dik genişlik sabit kalır, yoksa
+        // dik kısımlar sıra başına tek tuşa düşüp noktalı görünür.
+        const th = p.thick * Math.hypot(1, (amp * cs * Math.PI * 2) / p.wave);
+        const eA = (k.cy - (CY + sn * amp)) / th, eB = (k.cy - (CY - sn * amp)) / th;
+        const vA = Math.exp(-eA * eA) * (0.6 + 0.4 * cs), vB = Math.exp(-eB * eB) * (0.6 - 0.4 * cs);
+        const u = (k.cx / WIDTH_U) * 0.35 + s.ph * 0.05;
+        const cA = pal(p.palette, u), cB = pal(p.palette, u + 0.5);
+        const wA = vA ** 4, wB = vB ** 4, ws = wA + wB || 1, lum = 1 - (1 - vA) * (1 - vB);
+        put(out, k.i, [(cA[0] * wA + cB[0] * wB) / ws, (cA[1] * wA + cB[1] * wB) / ws, (cA[2] * wA + cB[2] * wB) / ws], lum);
       }
     },
   },

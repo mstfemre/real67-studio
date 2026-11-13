@@ -55,8 +55,12 @@ Real67'nin resmî aracı [MelGeek Hive](https://hive.melgeek.com) yalnızca birk
 | Halkalar | Bastığınız tuştan yayılan su halkaları (hangi programda yazarsanız yazın) |
 | Tuş izi | Bastığınız tuş yanar ve yavaşça söner |
 | Yazma akışı | Yazdıkça hızlanan ve parlayan, durunca yavaşlayan renk akışı |
+| Havai fişek | Bastığınız tuştan çevreye kıvılcımlar saçılır |
 | Lav lambası | Birleşip ayrılan renk damlaları |
 | Girdap | Merkez etrafında dönen renk sarmalı |
+| Kaleydoskop | Ortadan dört yana aynalanan, sürekli değişen renk deseni |
+| Mozaik | Yavaşça yer değiştiren renkli camlar, aralarında koyu derzler |
+| Sarmal | Birbirine dolanarak akan iki ışık şeridi |
 | Fırtına | Koyu bulutlar ve çakan şimşekler |
 | Kalp atışı | Merkezden çift vuruşla yayılan nabız |
 | Tarayıcı | Bir uçtan diğerine gidip gelen ışık çubuğu |
@@ -126,7 +130,7 @@ Tarayıcı (arayüz)  ──HTTP──▶  Servis (Node.js)  ──USB HID──
 - Servis her karede 67 tuşun rengini hesaplar ve klavyenin "Özel 7" renk slotuna yazar. Durduğunda klavyeyi önceki ışık moduna geri döndürür.
 - Efektler `web-app/js/effects.js` içinde tanımlıdır. Arayüzdeki önizleme ve servis aynı kodu kullanır; yeni efekt eklemek için bu dosyadaki `EFFECTS` dizisine bir kayıt eklemek yeterlidir.
 - Servis yalnızca `127.0.0.1:8667` üzerinde dinler; ağdaki başka cihazlar erişemez.
-- **Halkalar**, **Tuş izi** ve **Yazma akışı** oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken yalnızca kısayol tuşlarına (Ctrl, Alt, oklar) bakılır.
+- **Halkalar**, **Tuş izi**, **Yazma akışı** ve **Havai fişek** oynarken servis, hangi tuşa basıldığını Windows'a sorar (`GetAsyncKeyState`, `service/keys.mjs`). Klavye kancası kurulmaz; basışlar yalnızca o karedeki ışık için kullanılır, kaydedilmez ve hiçbir yere gönderilmez. Başka bir efekt oynarken yalnızca kısayol tuşlarına (Ctrl, Alt, oklar) bakılır.
 
 ## Dosyalar
 
