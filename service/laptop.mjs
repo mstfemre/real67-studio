@@ -24,7 +24,7 @@ export async function laptopAvailable() {
 }
 
 export function sanitize(cfg = {}, base = LAPTOP_DEFAULT) {
-  const c = { ...base };
+  const c = { ...base }; delete c.sync;
   if (typeof cfg.on === 'boolean') c.on = cfg.on;
   if (LAPTOP_EFFECTS.some((e) => e.id === cfg.effect)) c.effect = cfg.effect;
   if (typeof cfg.color === 'string' && /^#[0-9a-f]{6}$/i.test(cfg.color)) c.color = cfg.color.toLowerCase();
