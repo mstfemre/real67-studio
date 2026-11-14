@@ -18,6 +18,7 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
+import { LAPTOP_EFFECTS, LAPTOP_DEFAULT, laptopAvailable, laptopApply, laptopSyncFrame, sanitize as laptopSanitize } from './laptop.mjs';
 import { pollPresses, resetPresses, keysAvailable, keysError, hotkeyReader } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
@@ -37,7 +38,7 @@ const log = (...a) => console.log(new Date().toTimeString().slice(0, 8), ...a);
 // saved: oynatmaya başlamadan önceki klavye ışığı; durdurunca geri yüklenir
 // mood: ortam ışığının otomatik renk değişimi (kind: off | cycle | follow)
 const MOOD_OFF = { kind: 'off', colors: [1, 2, 3, 4, 5, 6, 7], interval: 5, shuffle: false, region: 'all' };
-let persisted = { playing: null, saved: null, mood: MOOD_OFF };
+let persisted = { playing: null, saved: null, mood: MOOD_OFF, laptop: LAPTOP_DEFAULT };
 try { persisted = { ...persisted, ...JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) }; } catch { /* ilk çalıştırma */ }
 function persist() {
   try { fs.writeFileSync(STATE_FILE, JSON.stringify(persisted)); } catch (e) { log('Durum dosyası yazılamadı:', e.message); }
@@ -193,6 +194,7 @@ async function tick() {
       const p = S.lastSent?.[i];
       if (full || !p || p.r !== c.r || p.g !== c.g || p.b !== c.b) changed.push(i);
     }
+    if (persisted.laptop.sync && persisted.laptop.on) laptopSyncFrame(colors, now);
     if (full) S.resyncAt = now + 2000;
     if (changed.length) await S.kb.writeSlot(LIVE_SLOT, colors, full ? null : changed);
     S.lastSent = colors;
@@ -344,6 +346,7 @@ async function setMoodAuto(cfg) {
   persisted.mood = sanitizeMood(cfg); persist();
   M.idx = -1;
   if (before !== persisted.mood.kind) { M.last = 0; M.prepared = false; }
+  laptopAvailable().then((ok) => ok && laptopApply(persisted.laptop)).catch((e) => log('Laptop ışığı uygulanamadı:', e.message));
   if (persisted.mood.kind !== 'off') { connect(); return; }
   // Kapatılınca otomatik başlamadan önceki renge dön (yanıt bundan sonra döner; arayüz
   // ardından elle renk seçerse onun üzerine yazılmaz)
@@ -520,6 +523,13 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/mood') { await setMoodAuto(body); return json(res, 200, status()); }
       if (url.pathname === '/api/mood/get') return json(res, 200, await moodGet());
       if (url.pathname === '/api/mood/set') return json(res, 200, await moodSet(body));
+      if (url.pathname === '/api/laptop/get') return json(res, 200, { available: await laptopAvailable(), effects: LAPTOP_EFFECTS, cfg: persisted.laptop });
+      if (url.pathname === '/api/laptop/set') {
+        const c = laptopSanitize(body, persisted.laptop);
+        await laptopApply(c);
+        persisted.laptop = c; persist();
+        return json(res, 200, { available: true, effects: LAPTOP_EFFECTS, cfg: c });
+      }
       if (url.pathname === '/api/quit') { json(res, 200, { ok: true }); return shutdown(false); }
       return json(res, 404, { error: 'Bulunamadı' });
     } catch (e) {

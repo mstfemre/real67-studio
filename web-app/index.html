@@ -84,6 +84,36 @@
           </div>
           <p class="hint" id="moodAutoHint"></p>
         </div>
+
+        <div class="group mood-card" id="laptopCard" hidden>
+          <label class="mood-head">
+            <h3>Laptop klavyesi</h3>
+            <input type="checkbox" id="lpOn" checked aria-label="Laptop klavye ışığı açık" />
+          </label>
+          <label class="field check"><span>Real67'yi takip et (renk klavyedeki efekti izler)</span><input type="checkbox" id="lpSync" /></label>
+          <div id="lpManual">
+          <div class="mood-row">
+            <span class="mood-label">Efekt</span>
+            <div class="seg" id="lpFx"></div>
+          </div>
+          <div class="mood-row" id="lpColorRow">
+            <span class="mood-label">Renk</span>
+            <div id="lpColor"></div>
+          </div>
+          <div class="mood-row" id="lpSpeedRow">
+            <span class="mood-label">Hız</span>
+            <div class="seg" id="lpSpeed"></div>
+          </div>
+          <div class="mood-row" id="lpDirRow">
+            <span class="mood-label">Yön</span>
+            <div class="seg" id="lpDir"></div>
+          </div>
+          </div>
+          <div class="mood-row">
+            <span class="mood-label">Parlaklık</span>
+            <div class="seg" id="lpLevel"></div>
+          </div>
+        </div>
       </div>
       <div class="fx-side">
         <div class="group now-playing" id="nowPlaying" data-on="false">
