@@ -55,7 +55,9 @@ export function laptopSyncFrame(colors, now) {
   if (sync.busy || now - sync.t < 450) return;
   sync.t = now;
   let r = 0, g = 0, b = 0, w = 0;
-  for (const c of colors) {
+  // Tüm klavyenin ortalaması gökkuşağında hep aynı renge çıkar; bu yüzden ortadaki tuşlardan örnek al.
+  const mid = colors.slice(Math.floor(colors.length * 0.35), Math.floor(colors.length * 0.5));
+  for (const c of mid) {
     const l = Math.max(c.r, c.g, c.b);
     if (l < 12) continue; // sönük tuşlar rengi sulandırmasın
     r += c.r * l; g += c.g * l; b += c.b * l; w += l;
@@ -65,6 +67,7 @@ export function laptopSyncFrame(colors, now) {
   else { const m = Math.max(r, g, b) / w || 1; col = [r, g, b].map((v) => Math.min(255, Math.round((v / w) * (255 / m)))); }
   if (sync.last && Math.hypot(col[0] - sync.last[0], col[1] - sync.last[1], col[2] - sync.last[2]) < 22) return;
   sync.last = col; sync.busy = true;
+  if (process.env.REAL67_DEBUG) console.log('laptop sync', col.join(','));
   const hex = col.map((v) => v.toString(16).padStart(2, '0')).join('');
   run(['aura', 'effect', 'static', '-c', hex]).catch(() => {}).finally(() => { sync.busy = false; });
 }
