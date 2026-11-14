@@ -21,6 +21,11 @@
     </div>
   </header>
 
+  <nav class="tabs" aria-label="Bölümler">
+    <button data-tab="live" aria-selected="true">Real67</button>
+    <button data-tab="laptop" aria-selected="false">Laptop klavyesi</button>
+  </nav>
+
   <main>
     <section class="stage" aria-label="Klavye önizlemesi">
       <div class="case" id="case">
@@ -85,35 +90,6 @@
           <p class="hint" id="moodAutoHint"></p>
         </div>
 
-        <div class="group mood-card" id="laptopCard" hidden>
-          <label class="mood-head">
-            <h3>Laptop klavyesi</h3>
-            <input type="checkbox" id="lpOn" checked aria-label="Laptop klavye ışığı açık" />
-          </label>
-          <label class="field check"><span>Real67'yi takip et (renk klavyedeki efekti izler)</span><input type="checkbox" id="lpSync" /></label>
-          <div id="lpManual">
-          <div class="mood-row">
-            <span class="mood-label">Efekt</span>
-            <div class="seg" id="lpFx"></div>
-          </div>
-          <div class="mood-row" id="lpColorRow">
-            <span class="mood-label">Renk</span>
-            <div id="lpColor"></div>
-          </div>
-          <div class="mood-row" id="lpSpeedRow">
-            <span class="mood-label">Hız</span>
-            <div class="seg" id="lpSpeed"></div>
-          </div>
-          <div class="mood-row" id="lpDirRow">
-            <span class="mood-label">Yön</span>
-            <div class="seg" id="lpDir"></div>
-          </div>
-          </div>
-          <div class="mood-row">
-            <span class="mood-label">Parlaklık</span>
-            <div class="seg" id="lpLevel"></div>
-          </div>
-        </div>
       </div>
       <div class="fx-side">
         <div class="group now-playing" id="nowPlaying" data-on="false">
@@ -133,6 +109,31 @@
             <select id="fps"><option value="20">20</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option></select>
           </label>
           <label class="field check"><input type="checkbox" id="gamma" checked /><span>Gama düzeltmesi (koyu tonlar daha doğru)</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- LAPTOP KLAVYESİ (sabit renk) -->
+    <section class="panel" data-panel="laptop" hidden>
+      <div class="fx-main">
+        <div class="group mood-card" id="laptopCard">
+          <label class="mood-head">
+            <h3>Laptop klavyesi</h3>
+            <input type="checkbox" id="lpOn" checked aria-label="Laptop klavye ışığı açık" />
+          </label>
+          <p class="hint" id="lpHint"></p>
+          <div class="mood-row">
+            <span class="mood-label">Renk</span>
+            <div class="dots" id="lpDots"></div>
+          </div>
+          <div class="mood-row">
+            <span class="mood-label">Özel renk</span>
+            <div id="lpColor"></div>
+          </div>
+          <div class="mood-row">
+            <span class="mood-label">Parlaklık</span>
+            <div class="seg" id="lpLevel"></div>
+          </div>
         </div>
       </div>
     </section>

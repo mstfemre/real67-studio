@@ -450,7 +450,7 @@ async function svcPoll() {
   try { Object.assign(svc, await svcCall('status'), { ok: true }); }
   catch { Object.assign(svc, { ok: false, playing: false, connected: false, fps: 0 }); }
   if (before !== `${svc.ok}|${svc.playing}|${svc.connected}`) { setLiveBtn(); setStageNote(); }
-  if (svc.ok) { syncMoodFromService(); loadLaptop().catch(() => {}); }
+  if (svc.ok) syncMoodFromService();
   renderConn();
   // Servis ilk kez görüldüğünde (ya da yeniden açıldığında) ortam ışığı ayarlarını ondan oku
   if (svc.ok && !svc.moodLoaded) {
@@ -606,6 +606,8 @@ function setTab(tab) {
   $('#case').classList.toggle('paint-mode', tab === 'paint');
   if (tab === 'paint') { if (app.live) toast('Canlı efekt çalışırken boyama önizlemesi gösteriliyor; klavyede efekt devam ediyor.'); openSlot(app.paint.slot); }
   if (tab === 'modes') guard(loadModes);
+  $('.stage').hidden = tab === 'laptop';
+  if (tab === 'laptop') guard(loadLaptop);
   if (tab === 'live') guard(loadMood); // ortam ışığı artık canlı efektler ekranında
 }
 
@@ -927,49 +929,46 @@ $('#kmRandom').addEventListener('change', pushKeyParams);
 $('#blOn').addEventListener('change', (e) => guard(() => app.kb?.setBacklight(e.target.checked)));
 
 
-// ------------------------------------------------------------ laptop klavyesi (asusctl, servis üzerinden)
-const LP = { cfg: null, effects: [], ctl: null };
-const LP_SPEED = [['low', 'Yavaş'], ['med', 'Orta'], ['high', 'Hızlı']];
-const LP_DIR = [['left', '←'], ['right', '→'], ['up', '↑'], ['down', '↓']];
+// ------------------------------------------------------------ laptop klavyesi (asusctl, servis üzerinden; yalnızca sabit renk)
+const LP = { cfg: null, ctl: null };
+const LP_COLORS = [['#ff2a3a', 'Kırmızı'], ['#ff7a1a', 'Turuncu'], ['#ffd23f', 'Sarı'], ['#2bff6a', 'Yeşil'], ['#00e1ff', 'Camgöbeği'],
+  ['#2a6bff', 'Mavi'], ['#9b4dff', 'Mor'], ['#ff3df2', 'Pembe'], ['#ffffff', 'Beyaz']];
 const LP_LEVEL = [['low', 'Düşük'], ['med', 'Orta'], ['high', 'Yüksek']];
-function lpChips(box, items, key) {
-  for (const [id, name] of items) {
-    const b = Object.assign(document.createElement('button'), { className: 'chip', textContent: name });
-    b.dataset.v = id;
-    b.addEventListener('click', () => lpSet({ [key]: id }));
-    box.append(b);
-  }
-}
 async function lpSet(patch) {
   try {
-    const r = await svcCall('laptop/set', patch);
+    const r = await svcCall('laptop/set', { effect: 'static', ...patch });
     LP.cfg = r.cfg; lpRender();
   } catch (e) { toast('Laptop ışığı: ' + e.message, true); }
 }
 function lpRender() {
-  const c = LP.cfg, fx = LP.effects.find((e) => e.id === c.effect) || {};
-  $('#lpOn').checked = c.on; $('#lpSync').checked = !!c.sync; $('#lpManual').hidden = !!c.sync;
-  $$('#laptopCard .chip').forEach((b) => {
-    const box = b.parentElement.id, key = { lpFx: 'effect', lpSpeed: 'speed', lpDir: 'direction', lpLevel: 'level' }[box];
-    b.setAttribute('aria-pressed', String(c[key] === b.dataset.v));
-  });
-  $('#lpColorRow').hidden = !fx.color; $('#lpSpeedRow').hidden = !fx.speed; $('#lpDirRow').hidden = !fx.direction;
-  $$('#laptopCard .chip, #laptopCard .color-btn').forEach((el) => (el.disabled = !c.on));
+  const c = LP.cfg;
+  $('#lpOn').checked = c.on;
+  $$('#lpDots .dot').forEach((d) => d.setAttribute('aria-pressed', String(d.dataset.color === c.color)));
+  $$('#lpLevel .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === c.level)));
+  LP.ctl?.set(c.color);
+  $$('#laptopCard .dot, #laptopCard .chip, #laptopCard .color-btn').forEach((el) => (el.disabled = !c.on));
 }
 async function loadLaptop() {
   if (!svc.ok || LP.cfg) return;
   const r = await svcCall('laptop/get', {});
+  $('#lpHint').textContent = r.available ? '' : 'Bu bilgisayarda laptop klavye ışığı (asusctl) bulunamadı.';
   if (!r.available) return;
-  LP.cfg = r.cfg; LP.effects = r.effects;
-  const box = $('#lpFx');
-  lpChips(box, r.effects.map((e) => [e.id, e.name]), 'effect');
-  lpChips($('#lpSpeed'), LP_SPEED, 'speed'); lpChips($('#lpDir'), LP_DIR, 'direction'); lpChips($('#lpLevel'), LP_LEVEL, 'level');
+  LP.cfg = r.cfg;
+  for (const [hex, name] of LP_COLORS) {
+    const b = document.createElement('button'); b.className = 'dot'; b.dataset.color = hex;
+    b.style.background = hex; b.title = name; b.setAttribute('aria-label', name);
+    b.addEventListener('click', () => lpSet({ color: hex }));
+    $('#lpDots').append(b);
+  }
+  for (const [id, name] of LP_LEVEL) {
+    const b = Object.assign(document.createElement('button'), { className: 'chip', textContent: name });
+    b.dataset.v = id; b.addEventListener('click', () => lpSet({ level: id }));
+    $('#lpLevel').append(b);
+  }
   let t = null;
   LP.ctl = colorControl(r.cfg.color, (hex) => { clearTimeout(t); t = setTimeout(() => lpSet({ color: hex }), 120); });
   $('#lpColor').append(LP.ctl.el);
   $('#lpOn').addEventListener('change', (e) => lpSet({ on: e.target.checked }));
-  $('#lpSync').addEventListener('change', (e) => lpSet({ sync: e.target.checked }));
-  $('#laptopCard').hidden = false;
   lpRender();
 }
 

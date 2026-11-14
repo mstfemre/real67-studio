@@ -18,7 +18,7 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
-import { LAPTOP_EFFECTS, LAPTOP_DEFAULT, laptopAvailable, laptopApply, laptopSyncFrame, sanitize as laptopSanitize } from './laptop.mjs';
+import { LAPTOP_EFFECTS, LAPTOP_DEFAULT, laptopAvailable, laptopApply, sanitize as laptopSanitize } from './laptop.mjs';
 import { pollPresses, resetPresses, keysAvailable, keysError, hotkeyReader } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
@@ -194,7 +194,6 @@ async function tick() {
       const p = S.lastSent?.[i];
       if (full || !p || p.r !== c.r || p.g !== c.g || p.b !== c.b) changed.push(i);
     }
-    if (persisted.laptop.sync && persisted.laptop.on) laptopSyncFrame(colors, now);
     if (full) S.resyncAt = now + 2000;
     if (changed.length) await S.kb.writeSlot(LIVE_SLOT, colors, full ? null : changed);
     S.lastSent = colors;
