@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Real67 Studio
+Comment=Real67 klavye ışık kontrolü
+Exec=real67
+Icon=real67
+Terminal=false
+Categories=Utility;Settings;
+StartupWMClass=real67

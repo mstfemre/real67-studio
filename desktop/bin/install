@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Derler ve kullanıcıya kurar (sudo gerekmez): ~/.local/bin/real67,
+# uygulama başlatıcısı girdisi ve simge.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+bin/build >/dev/null
+install -Dm755 build/real67 "$HOME/.local/bin/real67"
+install -Dm644 share/real67.desktop "$HOME/.local/share/applications/real67.desktop"
+install -Dm644 share/real67.svg "$HOME/.local/share/icons/hicolor/scalable/apps/real67.svg"
+update-desktop-database -q "$HOME/.local/share/applications" 2>/dev/null || true
+echo "Kuruldu: ~/.local/bin/real67"

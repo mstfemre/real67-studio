@@ -39,3 +39,8 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 ## Çalıştırma
 - Servisi yeniden başlat: çalışan `node service\service.mjs` sürecini sonlandır, sonra `wscript arka-planda-baslat.vbs`.
 - Servis Hive trafiğini görünce kendini duraklatır (`P.paused`).
+
+## Masaüstü uygulaması (`desktop/`, Linux)
+- Qt Quick + WebEngine kabuğu (`real67`): `http://localhost:8667/studio/?desktop` adresini saydam pencerede açar. `/studio/` öneki servis tarafından kırpılır; `?desktop` `<html>`'e `desktop` sınıfı ekler (zemin neredeyse tamamen saydam, `styles.css` sonu).
+- Hyprland kuralı `~/.config/hypr/hyprland.lua` → `o.window("^real67$", …)`: döşenen (yüzmez, diğer pencerelerin üstünde durmaz), DP-1, arkası bulanık (Hyprland genel blur ayarı; pencere başına güç ayarlanamıyor). Pencere opaklığı kuralı yok; saydamlık sayfanın kendisinden gelir, yazılar net kalır.
+- Derle/kur: `desktop/bin/build`, `desktop/bin/install` (`~/.local/bin/real67`, başlatıcı girdisi, simge). `ac.sh` kuruluysa bunu açar. Tek örnek: `$XDG_RUNTIME_DIR/real67.lock`.

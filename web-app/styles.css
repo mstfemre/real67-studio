@@ -546,7 +546,7 @@ input[type="checkbox"]:disabled { opacity: .42; cursor: not-allowed; }
   .key > span { border-radius: 3px; font-size: 6px; }
   .tabs { margin-left: 0; margin-right: 0; width: 100%; }
   .group { padding: 16px 16px 18px; }
-  .fx-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .fx-list { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
   .strips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mood-card { padding: 18px 16px 20px; }
   .mood-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
@@ -560,3 +560,55 @@ input[type="checkbox"]:disabled { opacity: .42; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+
+/* ------------------------------------------------------------ liquid glass
+   Pencere Hyprland'de yarı saydam açılır (masaüstü bulanık görünür); zemin koyu ve sade
+   tutulur, yüzeyler ince parlak kenarlı, üstten ışık alan sıvı cam gibi durur. */
+:root {
+  --bg: #0b0d18;
+  --blob-alpha: .22;
+  --glass-blur: blur(34px) saturate(190%) brightness(1.08);
+  --lg-fill: linear-gradient(150deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .05) 38%, rgba(255, 255, 255, .02) 62%, rgba(255, 255, 255, .08) 100%);
+  --lg-rim: rgba(255, 255, 255, .22);
+  --glass-shadow:
+    0 18px 40px -26px rgba(0, 0, 0, .85),
+    inset 0 1px 0 rgba(255, 255, 255, .42),
+    inset 0 -1px 0 rgba(255, 255, 255, .1),
+    inset 0 0 24px rgba(255, 255, 255, .05);
+  --surface: rgba(255, 255, 255, .07); --raised: rgba(255, 255, 255, .12); --stage: rgba(255, 255, 255, .04);
+  --line: rgba(255, 255, 255, .14); --line-strong: rgba(255, 255, 255, .3);
+  --ink: #f5f7ff; --ink-2: rgba(230, 235, 252, .8); --ink-3: rgba(215, 222, 248, .56);
+  --legend: rgba(255, 255, 255, .88); --legend-shadow: 0 1px 1px rgba(0, 0, 0, .45);
+  --calcium: #3b3e43; --calcium-hi: #4a4d53; --calcium-lo: #292b2f; --cap: #2c2f34;
+  --well: rgba(0, 0, 0, .22);
+  color-scheme: dark;
+}
+html, body { background: var(--bg); }
+.ambient i { filter: blur(130px); }
+.group, .stage, .tabs, .fx, .status, .btn {
+  background-image: var(--lg-fill);
+  border-color: var(--lg-rim);
+}
+.group, .stage { position: relative; isolation: isolate; }
+/* üst kenardaki ışık kırılması */
+.group::before, .stage::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: radial-gradient(120% 60% at 20% -10%, rgba(255, 255, 255, .18), transparent 60%);
+}
+.btn { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 16px -10px rgba(0, 0, 0, .7); }
+.btn.primary {
+  background: rgba(255, 255, 255, .2) var(--lg-fill); color: var(--ink); border-color: rgba(255, 255, 255, .38);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.cp { background: rgba(14, 16, 28, .72) var(--lg-fill); border-color: var(--lg-rim); }
+
+/* Masaüstü uygulaması (desktop/, ?desktop): pencere gerçekten saydam. Zemin terminaller
+   gibi %65 kapalı; arkadaki masaüstünü Hyprland bulanıklaştırır, yazılar net kalır. */
+html.desktop, html.desktop body { background: transparent; }
+html.desktop .ambient { background: rgba(11, 13, 24, .04); }
+html.desktop { --surface: rgba(255, 255, 255, .04); --raised: rgba(255, 255, 255, .08); --stage: rgba(255, 255, 255, .02); --well: rgba(0, 0, 0, .12); }
+html.desktop .ambient i { display: none; }
+html.desktop ::-webkit-scrollbar { width: 0; height: 0; }
+/* Bağlıyken "REAL67 bağlı" rozeti ve üst çubuk gizlenir; bağlantı sorununda yine görünür. */
+html.desktop .bar:has(#status[data-state="on"]):not(:has(#connectBtn:not([hidden]))) { display: none; }
+html.desktop body:has(#status[data-state="on"]) main { padding-top: 22px; }

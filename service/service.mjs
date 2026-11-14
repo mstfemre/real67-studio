@@ -527,6 +527,9 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // /studio/ : masaüstü penceresinin kendi sınıfı olsun diye (Hyprland kuralı buna bakar)
+  if (p === '/studio') { res.writeHead(301, { Location: '/studio/' }); return res.end(); }
+  if (p.startsWith('/studio/')) p = p.slice(7);
   if (p === '/') p = '/index.html';
   if (!(p === '/index.html' || p === '/styles.css' || /^\/js\/[\w.-]+\.js$/.test(p))) return json(res, 404, { error: 'Bulunamadı' });
   fs.readFile(path.join(WEB_DIR, p), (err, buf) => {
