@@ -18,7 +18,7 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
-import { pollPresses, resetPresses, keysAvailable, hotkeyReader } from './keys.mjs';
+import { pollPresses, resetPresses, keysAvailable, keysError, hotkeyReader } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
 
@@ -305,10 +305,10 @@ function onHotkey(action) {
   const nb = action === 'up' ? BRIGHT_STEPS.find((v) => v > b) ?? 100 : [...BRIGHT_STEPS].reverse().find((v) => v < b) ?? 5;
   if (nb !== b) play({ ...cur, params: { ...cur.params, brightness: nb } }, 'hotkey');
 }
-if (keysAvailable()) {
+if (keysAvailable() || process.platform === 'linux') { // Linux'ta evdev sonradan da açılabilir
   const readHotkeys = hotkeyReader();
   setInterval(() => {
-    if (P.paused) return; // Hive açıkken klavyeye dokunma
+    if (P.paused || !keysAvailable()) return; // Hive açıkken klavyeye dokunma
     for (const a of readHotkeys()) { try { onHotkey(a); } catch (e) { log('Kısayol uygulanamadı:', e.message); } }
   }, 25);
 }
@@ -543,7 +543,9 @@ server.on('error', (e) => {
 });
 server.listen(PORT, '127.0.0.1', () => {
   log(`Real67 Studio: http://localhost:${PORT}/  (kapatmak için Ctrl+C)`);
-  if (!keysAvailable()) log('Tuş basışları algılanamıyor (koffi kurulu değil): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. kur.bat ile yeniden kurun.');
+  if (!keysAvailable()) log(process.platform === 'linux'
+    ? `Tuş basışları algılanamıyor (${keysError() || 'klavye bulunamadı'}): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. ./kur.sh ile udev kuralını kurun.`
+    : 'Tuş basışları algılanamıyor (koffi kurulu değil): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. kur.bat ile yeniden kurun.');
   if (persisted.playing) {
     try { play(persisted.playing, 'service'); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
     catch (e) { persisted.playing = null; persist(); log('Kayıtlı efekt yüklenemedi:', e.message); }

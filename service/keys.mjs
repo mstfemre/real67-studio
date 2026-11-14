@@ -5,6 +5,7 @@
 // oyun gecikmesi etkilenmez. Yalnızca "hangi konumdaki tuşa basıldı" bilgisi o karedeki ışık
 // için kullanılır; hiçbir yere yazılmaz, saklanmaz, gönderilmez.
 import { createRequire } from 'node:module';
+import fs from 'node:fs';
 import { KEYS } from '../web-app/js/layout.js';
 
 // Tuşun fiziksel konumu (tarama kodu). Sanal tuş koduna her seferinde o anki klavye
@@ -44,7 +45,77 @@ try {
   }
 } catch { api = null; /* koffi kurulu değil: basışa tepki veren efektler tepkisiz kalır */ }
 
-export const keysAvailable = () => !!api;
+
+// ------------------------------------------------------------ Linux: evdev
+// Linux'ta GetAsyncKeyState yok; klavyenin /dev/input/eventN düğümü okunur. Cihaz "grab"
+// edilmez: tuşlar Hyprland'e ve programlara her zamanki gibi gider, bu süreç yalnızca kopyasını
+// görür. Kodlar fiziksel konumdur (düzenden bağımsız), Türkçe Q / F'de de doğru tuş yanar.
+// Okuma izni için udev kuralı gerekir (linux/70-real67.rules, kur.sh kurar).
+const LINUX = process.platform === 'linux';
+const EV_CODE = {
+  Escape: [1, 41], Digit1: [2], Digit2: [3], Digit3: [4], Digit4: [5], Digit5: [6], Digit6: [7], Digit7: [8],
+  Digit8: [9], Digit9: [10], Digit0: [11], Minus: [12], Equal: [13], Backspace: [14], PrintScreen: [99],
+  Tab: [15], KeyQ: [16], KeyW: [17], KeyE: [18], KeyR: [19], KeyT: [20], KeyY: [21], KeyU: [22], KeyI: [23],
+  KeyO: [24], KeyP: [25], BracketLeft: [26], BracketRight: [27], Backslash: [43], Delete: [111],
+  CapsLock: [58, 164], KeyA: [30], KeyS: [31], KeyD: [32], KeyF: [33], KeyG: [34], KeyH: [35], KeyJ: [36],
+  KeyK: [37], KeyL: [38], Semicolon: [39], Quote: [40], Enter: [28], MediaTrackPrevious: [165],
+  ShiftLeft: [42], KeyZ: [44], KeyX: [45], KeyC: [46], KeyV: [47], KeyB: [48], KeyN: [49], KeyM: [50],
+  Comma: [51], Period: [52], Slash: [53], ShiftRight: [54], ArrowUp: [103], MediaTrackNext: [163],
+  ControlLeft: [29], MetaLeft: [125], AltLeft: [56], Space: [57], AltRight: [100],
+  ArrowLeft: [105], ArrowDown: [108], ArrowRight: [106],
+};
+const EV = {
+  codeToKey: new Map(), // evdev kodu → KEYS öğesi
+  held: new Uint8Array(768), // şu an basılı olanlar
+  pending: new Set(), // son yoklamadan beri basılan tuşlar (KEYS indeksi)
+  streams: new Map(), // /dev/input/eventN → okuma akışı
+  ok: false, error: null,
+};
+for (const k of KEYS) for (const c of EV_CODE[k.code] || []) EV.codeToKey.set(c, k);
+
+// Real67'nin (VID 0416, PID 0112) olay düğümleri
+function real67EventNodes() {
+  try {
+    return fs.readFileSync('/proc/bus/input/devices', 'utf8').split('\n\n')
+      .filter((b) => /Vendor=0416 Product=0112/i.test(b))
+      .flatMap((b) => (b.match(/Handlers=.*/)?.[0].match(/event\d+/g) || []).map((e) => '/dev/input/' + e));
+  } catch { return []; }
+}
+function openEvdev() {
+  for (const node of real67EventNodes()) {
+    if (EV.streams.has(node)) continue;
+    try { fs.accessSync(node, fs.constants.R_OK); } catch { EV.error = `${node} okunamıyor (udev kuralı kurulu mu?)`; continue; }
+    const st = fs.createReadStream(node, { highWaterMark: 24 * 64 });
+    let rest = Buffer.alloc(0);
+    st.on('data', (chunk) => {
+      const buf = rest.length ? Buffer.concat([rest, chunk]) : chunk;
+      let o = 0;
+      for (; o + 24 <= buf.length; o += 24) { // struct input_event (64 bit): zaman 16 + tür 2 + kod 2 + değer 4
+        if (buf.readUInt16LE(o + 16) !== 1) continue; // EV_KEY
+        const code = buf.readUInt16LE(o + 18), value = buf.readInt32LE(o + 20);
+        if (code >= EV.held.length) continue;
+        if (value === 1 && !EV.held[code]) { const k = EV.codeToKey.get(code); if (k) EV.pending.add(k.i); }
+        if (value !== 2) EV.held[code] = value ? 1 : 0; // 2 = otomatik tekrar
+      }
+      rest = buf.subarray(o);
+    });
+    const gone = () => { EV.streams.delete(node); EV.held.fill(0); };
+    st.on('error', gone); st.on('close', gone);
+    EV.streams.set(node, st);
+    EV.error = null;
+  }
+  EV.ok = EV.streams.size > 0;
+}
+if (LINUX) {
+  openEvdev();
+  setInterval(openEvdev, 2000).unref(); // klavye çıkarılıp takılırsa yeniden bağlan
+}
+// Windows sanal tuş kodu → evdev kodları (hotkeyReader Windows kodlarıyla çalışır)
+const VK_TO_EV = { 0x10: [42, 54], 0x11: [29, 97], 0x12: [56, 100], 0x5b: [125], 0x5c: [126], 0x25: [105], 0x26: [103], 0x27: [106], 0x28: [108] };
+const evIsDown = (vk) => (VK_TO_EV[vk] || []).some((c) => EV.held[c]);
+export const keysError = () => (LINUX ? EV.error : null);
+
+export const keysAvailable = () => (LINUX ? EV.ok : !!api);
 
 // tuş indeksi → izlenecek sanal tuş kodları
 let table = [], mappedAt = 0, layout = null;
@@ -67,6 +138,7 @@ function remap(now) {
 
 // Son çağrıdan beri basılan tuşlar (layout.js'teki KEYS öğeleri). Basılı tutmak tekrar saymaz.
 export function pollPresses() {
+  if (LINUX) { const hits = [...EV.pending].map((i) => KEYS[i]); EV.pending.clear(); return hits; }
   if (!api) return [];
   const now = Date.now();
   if (now - mappedAt > 1500) remap(now);
@@ -97,7 +169,7 @@ const HOTKEYS = [['prev', 0x25, false], ['next', 0x27, false], ['up', 0x26, true
 const REPEAT_DELAY = 400, REPEAT_EVERY = 120; // ms
 
 // isDown ve now dışarıdan verilebilir (sınama için). Her çağrıda yeni basılan kısayolları döner.
-export function hotkeyReader(isDown = (vk) => (api.state(vk) & 0x8000) !== 0, now = Date.now) {
+export function hotkeyReader(isDown = LINUX ? evIsDown : (vk) => (api.state(vk) & 0x8000) !== 0, now = Date.now) {
   const held = new Map();
   return () => {
     const mods = isDown(VK.ctrl) && isDown(VK.alt) && !isDown(VK.shift) && !isDown(VK.lwin) && !isDown(VK.rwin);
@@ -114,6 +186,7 @@ export function hotkeyReader(isDown = (vk) => (api.state(vk) & 0x8000) !== 0, no
 
 // Efekt başlarken çağrılır: o ana kadar basılmış / basılı tuşlar halka başlatmasın
 export function resetPresses() {
+  if (LINUX) { EV.pending.clear(); return; }
   if (!api) return;
   remap(Date.now());
   for (const k of KEYS) for (const vk of table[k.i]) down[vk] = api.state(vk) & 0x8000 ? 1 : 0;

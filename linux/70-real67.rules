@@ -1,0 +1,6 @@
+# Real67 Studio: oturumu açık kullanıcıya MelGeek Real67'nin (VID 0416, PID 0112)
+#  - hidraw düğümlerine erişim (ışık komutları, node-hid)
+#  - olay düğümlerine okuma (tuş tepkili efektler ve Ctrl+Alt+ok kısayolları)
+# izni verir. "uaccess" yalnızca o an oturumu açık olan kullanıcıya ACL ile izin verir.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0416", ATTRS{idProduct}=="0112", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="0416", ATTRS{idProduct}=="0112", TAG+="uaccess"

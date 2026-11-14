@@ -160,6 +160,19 @@ To uninstall, run `kaldir.bat`. It stops the service and removes the shortcuts; 
 - You can close the browser; the effect keeps playing in the background.
 - When the service is not running or the computer is off, the keyboard shows the lighting stored in its own memory.
 
+## Linux (Omarchy / Hyprland)
+
+The `linux` branch runs the same service on Linux.
+
+```
+git clone -b linux https://github.com/mstfemre/real67-studio.git
+cd real67-studio && ./kur.sh
+```
+
+`kur.sh` installs the dependencies, an udev rule (`linux/70-real67.rules`, asks for `sudo`) that lets the logged-in user reach the keyboard without root, a systemd user service (`real67-studio.service`) and a **Real67 Studio** entry in the app launcher (Super+Space). Other scripts: `ac.sh` (open the interface), `servisi-durdur.sh` (stop), `kaldir.sh` (uninstall). Autostart: `systemctl --user enable|disable real67-studio`. Log: `journalctl --user -u real67-studio -f`.
+
+Key presses are read from the Real67's own `/dev/input/event*` nodes (evdev). The device is not grabbed, so keys still reach Hyprland and every program; key codes are physical positions, so any layout works. Ctrl+Alt+arrow hotkeys are not used by Omarchy's default bindings. Unlike Windows, presses are also seen on the lock screen. `service/klavye-testi.mjs` is Windows-only.
+
 ## Using it alongside MelGeek Hive
 
 Keep using Hive for settings such as rapid trigger and key mapping.
@@ -201,7 +214,7 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 ## Limitations
 
 - Tested only with the MelGeek Real67 (67 keys).
-- Windows only (startup scripts and shortcuts).
+- Windows, plus Linux on the `linux` branch (see above).
 - Effects are streamed from the computer, so they do not play while the service is stopped; the firmware cannot store a custom animation.
 - The firmware accepts only 8 preset colours for the ambient light.
 - Key presses and hotkeys are not detected while Windows is on the lock screen.
