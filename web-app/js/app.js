@@ -101,8 +101,16 @@ function showRGB(arr255) { // [{r,g,b}] ya da Float32Array (0..1)
     let r, g, b;
     if (arr255 instanceof Float32Array) { r = to255(arr255[i * 3]); g = to255(arr255[i * 3 + 1]); b = to255(arr255[i * 3 + 2]); }
     else ({ r, g, b } = arr255[i]);
-    keyEls[i].style.setProperty('--c', `${r}, ${g}, ${b}`);
+    setKeyColor(i, r, g, b);
   }
+}
+// Renk değişmediyse stile dokunma; küçük farkları yuvarla (her yazma tüm tuşun yeniden boyanması demek)
+const keyLast = new Array(KEY_COUNT).fill('');
+function setKeyColor(i, r, g, b) {
+  const v = `${(r + 2) & ~3}, ${(g + 2) & ~3}, ${(b + 2) & ~3}`;
+  if (keyLast[i] === v) return;
+  keyLast[i] = v;
+  keyEls[i].style.setProperty('--c', v);
 }
 
 // Vurgu rengi, ekrandaki ışığın baskın tonundan gelir
@@ -125,7 +133,7 @@ function vivid(sum, weight, fallback) {
 }
 function updateAccent(rgbFloat) {
   const now = performance.now();
-  if (now - accentT < 300) return;
+  if (now - accentT < 600) return;
   accentT = now;
   const root = document.documentElement.style;
 
@@ -167,13 +175,18 @@ engine.gamma = store.gamma ?? true;
 engine.setEffect(app.fx, paramsFor(app.fx));
 engine.start(store.fps ?? 30);
 
+let viewT = 0;
 engine.onFrame((final, raw) => {
   // önizleme: gama uygulanmamış renk, genel parlaklıkla. Arayüz renkleri her sekmede efekti izler.
-  const m = engine.master * brightnessOf(engine.params); // önizleme de efektin parlaklığını gösterir
-  const view = new Float32Array(raw.length);
-  for (let i = 0; i < raw.length; i++) view[i] = Math.min(1, Math.max(0, raw[i])) * m;
-  if (app.tab !== 'paint' && app.tab !== 'modes') showRGB(view);
-  updateAccent(raw);
+  const nowT = performance.now();
+  if (!document.hidden && nowT - viewT >= 80 && app.tab !== 'paint' && app.tab !== 'modes') { // önizleme ~15 kare/sn
+    viewT = nowT;
+    const m = engine.master * brightnessOf(engine.params); // önizleme de efektin parlaklığını gösterir
+    const view = new Float32Array(raw.length);
+    for (let i = 0; i < raw.length; i++) view[i] = Math.min(1, Math.max(0, raw[i])) * m;
+    showRGB(view);
+  }
+  if (!document.hidden) updateAccent(raw);
   if (app.live && app.kb && !app.sending) sendFrame(final);
 });
 
@@ -250,6 +263,8 @@ async function playEffect(fx) {
 // ------------------------------------------------------------ efekt listesi
 const fxList = $('#fxList');
 const minis = [];
+const miniVis = new Set();
+const miniIO = new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? miniVis.add(e.target) : miniVis.delete(e.target))));
 for (const fx of VISIBLE_EFFECTS) {
   const b = document.createElement('button');
   b.className = 'fx'; b.setAttribute('role', 'option'); b.dataset.id = fx.id;
@@ -259,15 +274,17 @@ for (const fx of VISIBLE_EFFECTS) {
   b.addEventListener('click', () => guard(() => playEffect(fx)));
   fxList.append(b);
   const st = {}; fx.init?.(st);
+  miniIO.observe(cv);
   minis.push({ fx, cv, ctx: cv.getContext('2d'), st, out: new Float32Array(KEY_COUNT * 3) });
 }
 let miniT = 0;
 function drawMinis(ts) {
   requestAnimationFrame(drawMinis);
-  if (app.tab !== 'live' || ts - miniT < 66) return;
+  if (document.hidden || app.tab !== 'live' || ts - miniT < 125) return; // ~8 kare/sn
   const dt = (ts - (miniT || ts)) / 1000; miniT = ts;
   const t = ts / 1000;
   for (const m of minis.concat(favMinis)) {
+    if (!miniVis.has(m.cv)) continue; // ekranda görünmeyen kartı çizme
     const p = m.params ?? paramsFor(m.fx); // favoriler kendi kayıtlı ayarlarıyla oynar
     // küçük önizlemede basışa tepki veren efektler için örnek basışlar
     const presses = (m.fx.needsKeys || m.fx.id === 'reactive') && Math.random() < 0.08 ? [KEYS[(Math.random() * KEY_COUNT) | 0]] : [];
@@ -334,6 +351,7 @@ function renderFavs() {
     wrap.append(b, del);
     list.append(wrap);
     const st = {}; fx.init?.(st);
+    miniIO.observe(cv);
     favMinis.push({ fx, params: cleanParams(fx, fav.params), cv, ctx: cv.getContext('2d'), st, out: new Float32Array(KEY_COUNT * 3) });
   }
 }
@@ -606,8 +624,6 @@ function setTab(tab) {
   $('#case').classList.toggle('paint-mode', tab === 'paint');
   if (tab === 'paint') { if (app.live) toast('Canlı efekt çalışırken boyama önizlemesi gösteriliyor; klavyede efekt devam ediyor.'); openSlot(app.paint.slot); }
   if (tab === 'modes') guard(loadModes);
-  $('.stage').hidden = tab === 'laptop';
-  if (tab === 'laptop') guard(loadLaptop);
   if (tab === 'live') guard(loadMood); // ortam ışığı artık canlı efektler ekranında
 }
 
@@ -673,7 +689,7 @@ function applyKey(i) {
   if (cols[i].r === c.r && cols[i].g === c.g && cols[i].b === c.b) return;
   cols[i] = c;
   app.paint.dirty.add(i);
-  keyEls[i].style.setProperty('--c', `${c.r}, ${c.g}, ${c.b}`);
+  keyEls[i].style.setProperty('--c', `${c.r}, ${c.g}, ${c.b}`); keyLast[i] = '';
   scheduleWrite();
 }
 function scheduleWrite(all = false) {
@@ -928,49 +944,6 @@ $('#kmSpeed').addEventListener('input', (e) => { $('#kmSpeedOut').textContent = 
 $('#kmRandom').addEventListener('change', pushKeyParams);
 $('#blOn').addEventListener('change', (e) => guard(() => app.kb?.setBacklight(e.target.checked)));
 
-
-// ------------------------------------------------------------ laptop klavyesi (asusctl, servis üzerinden; yalnızca sabit renk)
-const LP = { cfg: null, ctl: null };
-const LP_COLORS = [['#ff2a3a', 'Kırmızı'], ['#ff7a1a', 'Turuncu'], ['#ffd23f', 'Sarı'], ['#2bff6a', 'Yeşil'], ['#00e1ff', 'Camgöbeği'],
-  ['#2a6bff', 'Mavi'], ['#9b4dff', 'Mor'], ['#ff3df2', 'Pembe'], ['#ffffff', 'Beyaz']];
-const LP_LEVEL = [['low', 'Düşük'], ['med', 'Orta'], ['high', 'Yüksek']];
-async function lpSet(patch) {
-  try {
-    const r = await svcCall('laptop/set', { effect: 'static', ...patch });
-    LP.cfg = r.cfg; lpRender();
-  } catch (e) { toast('Laptop ışığı: ' + e.message, true); }
-}
-function lpRender() {
-  const c = LP.cfg;
-  $('#lpOn').checked = c.on;
-  $$('#lpDots .dot').forEach((d) => d.setAttribute('aria-pressed', String(d.dataset.color === c.color)));
-  $$('#lpLevel .chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === c.level)));
-  LP.ctl?.set(c.color);
-  $$('#laptopCard .dot, #laptopCard .chip, #laptopCard .color-btn').forEach((el) => (el.disabled = !c.on));
-}
-async function loadLaptop() {
-  if (!svc.ok || LP.cfg) return;
-  const r = await svcCall('laptop/get', {});
-  $('#lpHint').textContent = r.available ? '' : 'Bu bilgisayarda laptop klavye ışığı (asusctl) bulunamadı.';
-  if (!r.available) return;
-  LP.cfg = r.cfg;
-  for (const [hex, name] of LP_COLORS) {
-    const b = document.createElement('button'); b.className = 'dot'; b.dataset.color = hex;
-    b.style.background = hex; b.title = name; b.setAttribute('aria-label', name);
-    b.addEventListener('click', () => lpSet({ color: hex }));
-    $('#lpDots').append(b);
-  }
-  for (const [id, name] of LP_LEVEL) {
-    const b = Object.assign(document.createElement('button'), { className: 'chip', textContent: name });
-    b.dataset.v = id; b.addEventListener('click', () => lpSet({ level: id }));
-    $('#lpLevel').append(b);
-  }
-  let t = null;
-  LP.ctl = colorControl(r.cfg.color, (hex) => { clearTimeout(t); t = setTimeout(() => lpSet({ color: hex }), 120); });
-  $('#lpColor').append(LP.ctl.el);
-  $('#lpOn').addEventListener('change', (e) => lpSet({ on: e.target.checked }));
-  lpRender();
-}
 
 // ------------------------------------------------------------ ortam ışığı
 const mmChips = $('#moodModeChips'), mcChips = $('#moodColorChips');

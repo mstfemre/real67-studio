@@ -18,7 +18,6 @@ import { createRequire } from 'node:module';
 import { EFFECTS, defaultsFor, hexToRgb, brightnessOf } from '../web-app/js/effects.js';
 import { Real67, VID, PID, USAGE_PAGE, KEY_COUNT, MOOD_COLORS, MOOD_SPEED, decodeParams, keyBrightCap, moodBrightCap } from '../web-app/js/protocol.js';
 import { KEYS, WIDTH_U } from '../web-app/js/layout.js';
-import { LAPTOP_EFFECTS, LAPTOP_DEFAULT, laptopAvailable, laptopApply, sanitize as laptopSanitize } from './laptop.mjs';
 import { pollPresses, resetPresses, keysAvailable, keysError, hotkeyReader } from './keys.mjs';
 
 const HID = createRequire(import.meta.url)('node-hid');
@@ -38,7 +37,7 @@ const log = (...a) => console.log(new Date().toTimeString().slice(0, 8), ...a);
 // saved: oynatmaya başlamadan önceki klavye ışığı; durdurunca geri yüklenir
 // mood: ortam ışığının otomatik renk değişimi (kind: off | cycle | follow)
 const MOOD_OFF = { kind: 'off', colors: [1, 2, 3, 4, 5, 6, 7], interval: 5, shuffle: false, region: 'all' };
-let persisted = { playing: null, saved: null, mood: MOOD_OFF, laptop: LAPTOP_DEFAULT };
+let persisted = { playing: null, saved: null, mood: MOOD_OFF };
 try { persisted = { ...persisted, ...JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) }; } catch { /* ilk çalıştırma */ }
 function persist() {
   try { fs.writeFileSync(STATE_FILE, JSON.stringify(persisted)); } catch (e) { log('Durum dosyası yazılamadı:', e.message); }
@@ -168,6 +167,26 @@ async function restore() {
 // Windows'ta zamanlayıcılar ~15,6 ms adımlarla çalışır; setInterval(1000/60) bu yüzden ~40 kare/sn
 // verir. Bunun yerine zamanlayıcı sık çalışır (TICK_MS) ve kare vakti gelmişse çizilir.
 const TICK_MS = 5, FRAME_SLACK_MS = 3;
+// Linux'ta zamanlayıcı hassas: sıradaki kare vaktine kadar uyu (saniyede ~200 yerine ~fps uyanış).
+// Windows'ta eski sık yoklama kalır.
+const PRECISE_TIMER = process.platform !== 'win32';
+function startTicker() {
+  if (!PRECISE_TIMER) return setInterval(tick, TICK_MS);
+  const h = { stop: false, t: null };
+  const loop = async () => {
+    await tick();
+    if (h.stop) return;
+    const wait = S.cfg ? S.last + 1000 / S.cfg.fps - performance.now() - 1 : 50;
+    h.t = setTimeout(loop, Math.max(1, Math.min(50, wait)));
+  };
+  h.t = setTimeout(loop, 1);
+  return h;
+}
+function stopTicker() {
+  if (!S.timer) return;
+  if (S.timer.t !== undefined) { S.timer.stop = true; clearTimeout(S.timer.t); } else clearInterval(S.timer);
+  S.timer = null;
+}
 async function tick() {
   if (!S.cfg || S.busy || !S.kb) return;
   if (performance.now() - S.last < 1000 / S.cfg.fps - FRAME_SLACK_MS) return;
@@ -227,7 +246,7 @@ async function pauseForHive() {
   P.paused = true; P.since = Date.now();
   log('Hive algılandı: servis duraklatıldı, klavye Hive\'a bırakıldı');
   const resumeCfg = S.cfg || persisted.playing;
-  clearInterval(S.timer); S.timer = null;
+  stopTicker();
   S.cfg = null; S.fps = 0;
   await idle();
   while (M.busy) await new Promise((r) => setTimeout(r, 5));
@@ -266,13 +285,13 @@ function play(raw, source = 'ui') {
   REV.n++; REV.source = source;
   if (!S.timer) {
     S.last = performance.now();
-    S.timer = setInterval(tick, TICK_MS);
+    S.timer = startTicker();
   }
   connect();
 }
 
 async function stop() {
-  clearInterval(S.timer); S.timer = null;
+  stopTicker();
   if (S.cfg) persisted.lastFx = S.cfg.fxId; // kısayolla yeniden başlatınca kaldığı yerden
   S.cfg = null; S.fps = 0;
   persisted.playing = null; persist();
@@ -311,7 +330,7 @@ if (keysAvailable() || process.platform === 'linux') { // Linux'ta evdev sonrada
   setInterval(() => {
     if (P.paused || !keysAvailable()) return; // Hive açıkken klavyeye dokunma
     for (const a of readHotkeys()) { try { onHotkey(a); } catch (e) { log('Kısayol uygulanamadı:', e.message); } }
-  }, 25);
+  }, 40);
 }
 
 // ------------------------------------------------------------ ortam ışığı: otomatik renk değişimi
@@ -345,7 +364,6 @@ async function setMoodAuto(cfg) {
   persisted.mood = sanitizeMood(cfg); persist();
   M.idx = -1;
   if (before !== persisted.mood.kind) { M.last = 0; M.prepared = false; }
-  laptopAvailable().then((ok) => ok && laptopApply(persisted.laptop)).catch((e) => log('Laptop ışığı uygulanamadı:', e.message));
   if (persisted.mood.kind !== 'off') { connect(); return; }
   // Kapatılınca otomatik başlamadan önceki renge dön (yanıt bundan sonra döner; arayüz
   // ardından elle renk seçerse onun üzerine yazılmaz)
@@ -414,7 +432,7 @@ async function moodTick() {
     drop('Ortam ışığı ayarlanamadı: ' + e.message);
   } finally { M.busy = false; }
 }
-setInterval(moodTick, 100);
+setInterval(moodTick, 200);
 
 // ------------------------------------------------------------ ortam ışığı: elle ayarlar
 // Tarayıcının WebHID desteği gerekmesin diye (Firefox / Zen vb.) arayüz bu ayarları da servise yollar.
@@ -522,13 +540,6 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/mood') { await setMoodAuto(body); return json(res, 200, status()); }
       if (url.pathname === '/api/mood/get') return json(res, 200, await moodGet());
       if (url.pathname === '/api/mood/set') return json(res, 200, await moodSet(body));
-      if (url.pathname === '/api/laptop/get') return json(res, 200, { available: await laptopAvailable(), effects: LAPTOP_EFFECTS, cfg: persisted.laptop });
-      if (url.pathname === '/api/laptop/set') {
-        const c = laptopSanitize(body, persisted.laptop);
-        await laptopApply(c);
-        persisted.laptop = c; persist();
-        return json(res, 200, { available: true, effects: LAPTOP_EFFECTS, cfg: c });
-      }
       if (url.pathname === '/api/quit') { json(res, 200, { ok: true }); return shutdown(false); }
       return json(res, 404, { error: 'Bulunamadı' });
     } catch (e) {

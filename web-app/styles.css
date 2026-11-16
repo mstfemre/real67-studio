@@ -86,13 +86,14 @@ button { -webkit-tap-highlight-color: transparent; }
 .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
 /* Üç ışık alanı klavyede oynayan efektin sol / orta / sağ renklerini alır (JS günceller) */
 .ambient i {
-  position: absolute; border-radius: 50%; filter: blur(110px); opacity: var(--blob-alpha);
+  position: absolute; border-radius: 50%; opacity: var(--blob-alpha);
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, transparent 100%); mask-image: radial-gradient(closest-side, #000 0%, transparent 100%);
   transition: background-color 1.2s linear;
 }
 .ambient i:nth-child(1) { width: 64vw; height: 54vh; left: 18vw; top: -20vh; background-color: rgb(var(--glow)); }
 .ambient i:nth-child(2) { width: 52vw; height: 58vh; left: -16vw; top: 40vh; background-color: rgb(var(--blob-b)); }
 .ambient i:nth-child(3) { width: 52vw; height: 60vh; right: -16vw; top: 24vh; background-color: rgb(var(--blob-c)); }
-.group, .stage, .tabs, .fx, .status {
+.group, .stage, .tabs, .status {
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
 }
@@ -183,7 +184,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 28px 80px; }
 }
 .underglow {
   position: absolute; left: 3%; right: 3%; bottom: -30px; height: 46px; z-index: -1;
-  filter: blur(30px); opacity: .6; border-radius: 50%;
+  filter: blur(18px); opacity: .6; border-radius: 50%; contain: strict;
   background: rgb(var(--glow));
   transition: background .5s;
 }
@@ -584,7 +585,7 @@ input[type="checkbox"]:disabled { opacity: .42; cursor: not-allowed; }
   color-scheme: dark;
 }
 html, body { background: var(--bg); }
-.ambient i { filter: blur(130px); }
+.ambient i { filter: none; }
 .group, .stage, .tabs, .fx, .status, .btn {
   background-image: var(--lg-fill);
   border-color: var(--lg-rim);
@@ -612,3 +613,5 @@ html.desktop ::-webkit-scrollbar { width: 0; height: 0; }
 /* Bağlıyken "REAL67 bağlı" rozeti ve üst çubuk gizlenir; bağlantı sorununda yine görünür. */
 html.desktop .bar:has(#status[data-state="on"]):not(:has(#connectBtn:not([hidden]))) { display: none; }
 html.desktop body:has(#status[data-state="on"]) main { padding-top: 22px; }
+
+.fx { background-color: rgba(30, 32, 48, .55); }
