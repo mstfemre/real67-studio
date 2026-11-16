@@ -6,7 +6,8 @@ rem  3) Baslat menusune "Real67 Studio" kisayolu ekler
 rem  4) Isterseniz Windows acilisinda otomatik baslatmayi kurar
 rem  5) Servisi baslatip arayuzu acar
 setlocal
-cd /d "%~dp0"
+rem Bu dosya windows\ klasorunde; servis ve arayuz bir ust klasorde
+cd /d "%~dp0.."
 echo.
 echo  Real67 Studio kurulumu
 echo  ----------------------

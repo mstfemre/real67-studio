@@ -9,7 +9,8 @@ Const STATUS_URL = "http://127.0.0.1:8667/api/status"
 Dim fso, sh, i
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set sh = CreateObject("WScript.Shell")
-sh.CurrentDirectory = fso.GetParentFolderName(WScript.ScriptFullName)
+' Bu dosya windows\ klasorunde; servis bir ust klasorde
+sh.CurrentDirectory = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
 
 Function ServiceUp()
   Dim http

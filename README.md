@@ -124,10 +124,10 @@ The same code runs on both platforms. Pick yours:
 
 | | Windows | Linux (Omarchy) |
 |---|---|---|
-| Install | `kur.bat` | `./kur.sh` |
+| Install | `windows\kur.bat` | `linux/kur.sh` |
 | Open the interface | Start menu → **Real67 Studio** | App launcher (Super+Space) → **Real67 Studio** |
-| Stop the service | `servisi-durdur.bat` | `./servisi-durdur.sh` |
-| Uninstall | `kaldir.bat` | `./kaldir.sh` |
+| Stop the service | `windows\servisi-durdur.bat` | `linux/servisi-durdur.sh` |
+| Uninstall | `windows\kaldir.bat` | `linux/kaldir.sh` |
 
 Both open the same web interface at <http://localhost:8667>.
 
@@ -143,28 +143,28 @@ git clone https://github.com/mstfemre/real67-studio.git
 
 Without Git, use the green **Code** button at the top of this page, choose **Download ZIP** and extract it to a folder.
 
-**3. Double-click `kur.bat`** (*kur* = install). It will:
+**3. Open the `windows` folder and double-click `kur.bat`** (*kur* = install). It will:
 
 - download the dependencies (`node-hid`, `koffi`),
 - add a **Real67 Studio** shortcut to the Start menu,
 - ask whether to start automatically with Windows,
 - start the service and open the interface in your browser.
 
-> If you move the folder later, run `kur.bat` again; the shortcuts store the folder's location.
+> If you move the folder later, or you installed an older version whose scripts sat in the main folder, run `windows\kur.bat` again; the shortcuts store the folder's location.
 
-To uninstall, run `kaldir.bat`. It stops the service and removes the shortcuts; it does not delete the folder.
+To uninstall, run `windows\kaldir.bat`. It stops the service and removes the shortcuts; it does not delete the folder.
 
 ### Linux (Omarchy / Hyprland)
 
 ```
 omarchy pkg add nodejs npm    # if Node.js is not installed yet
 git clone https://github.com/mstfemre/real67-studio.git
-cd real67-studio && ./kur.sh
+cd real67-studio && linux/kur.sh
 ```
 
 `kur.sh` installs the dependencies, an udev rule (`linux/70-real67.rules`, asks for `sudo`) that lets the logged-in user reach the keyboard without root, a systemd user service (`real67-studio.service`) and a **Real67 Studio** entry in the app launcher (Super+Space). On Omarchy the interface opens as a web app window; elsewhere in your default browser.
 
-Other scripts: `ac.sh` (open the interface), `servisi-durdur.sh` (stop), `kaldir.sh` (uninstall). Autostart: `systemctl --user enable|disable real67-studio`. Log: `journalctl --user -u real67-studio -f`.
+Other scripts in `linux/`: `ac.sh` (open the interface), `servisi-durdur.sh` (stop), `kaldir.sh` (uninstall). Autostart: `systemctl --user enable|disable real67-studio`. Log: `journalctl --user -u real67-studio -f`.
 
 Key presses are read from the Real67's own `/dev/input/event*` nodes (evdev). The device is not grabbed, so keys still reach Hyprland and every program; key codes are physical positions, so any layout works. Ctrl+Alt+arrow hotkeys are not used by Omarchy's default bindings. Unlike Windows, presses are also seen on the lock screen. `service/klavye-testi.mjs` is Windows-only.
 
@@ -191,7 +191,7 @@ Keep using Hive for settings such as rapid trigger and key mapping.
 
 - When Hive (web or desktop) connects to the keyboard, the service notices, pauses itself and restores the keyboard's previous lighting.
 - When you are done with Hive, open **Real67 Studio** from the Start menu / app launcher or press **Devam et** (*Resume*) in the interface.
-- Before a **firmware update**, run `servisi-durdur.bat` (*stop service*) first.
+- Before a **firmware update**, run `windows\servisi-durdur.bat` (*stop service*) first (`linux/servisi-durdur.sh` on Linux).
 
 ## How it works
 
@@ -211,6 +211,9 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 
 | File / folder | Purpose |
 |---|---|
+| `web-app/` | Interface (HTML, CSS, JS), effects and protocol code; shared by both platforms |
+| `service/` | Background service (Node.js + node-hid; koffi for key presses on Windows, evdev on Linux); shared |
+| **`windows/`** | |
 | `kur.bat` | Installation |
 | `kaldir.bat` | Stops the service and removes the shortcuts |
 | `web-app-ac.vbs` | Starts the service if needed and opens the interface |
@@ -218,10 +221,12 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 | `start.bat` | Starts the service in a visible window (for debugging) |
 | `servisi-durdur.bat` | Stops the service; the keyboard returns to its previous lighting |
 | `otomatik-baslat-ac.bat` / `-kapat.bat` | Turns starting with Windows on / off |
-| `kur.sh`, `ac.sh`, `servisi-durdur.sh`, `kaldir.sh` | Linux: install, open, stop, uninstall |
-| `linux/` | Linux udev rule and launcher icon |
-| `web-app/` | Interface (HTML, CSS, JS), effects and protocol code |
-| `service/` | Background service (Node.js + node-hid; koffi for key presses) |
+| **`linux/`** | |
+| `kur.sh` | Installation (dependencies, udev rule, systemd user service, launcher entry) |
+| `ac.sh` | Starts the service if needed and opens the interface |
+| `servisi-durdur.sh` | Stops the service; the keyboard returns to its previous lighting |
+| `kaldir.sh` | Removes the service, launcher entry and udev rule |
+| `70-real67.rules`, `real67.png` | udev rule and launcher icon |
 | `service/klavye-testi.mjs` | Measures whether light streaming affects 8K polling or latency: `node service/klavye-testi.mjs` |
 | `docs/screenshots/` | Images used in this README |
 

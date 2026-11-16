@@ -7,7 +7,7 @@
 #  5) İsterseniz oturum açılınca otomatik başlatmayı açar
 #  6) Servisi başlatıp arayüzü açar
 set -euo pipefail
-cd "$(dirname "$(readlink -f "$0")")"
+cd "$(dirname "$(readlink -f "$0")")/.."  # bu dosya linux/ içinde; proje kökü bir üstte
 DIR="$PWD"
 UNIT=real67-studio.service
 UNIT_DIR="$HOME/.config/systemd/user"
@@ -57,7 +57,7 @@ cat >"$APP_DIR/real67-studio.desktop" <<DESKEOF
 Type=Application
 Name=Real67 Studio
 Comment=MelGeek Real67 ışık efektleri
-Exec=$DIR/ac.sh
+Exec=$DIR/linux/ac.sh
 Icon=$DIR/linux/real67.png
 Terminal=false
 Categories=Utility;
@@ -74,7 +74,7 @@ fi
 
 echo " [5/5] Servis başlatılıyor ve arayüz açılıyor..."
 systemctl --user restart "$UNIT"
-"$DIR/ac.sh"
+"$DIR/linux/ac.sh"
 
 echo
 echo " Tamam. Arayüz: http://localhost:8667"

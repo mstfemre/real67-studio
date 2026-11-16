@@ -50,7 +50,7 @@ try {
 // Linux'ta GetAsyncKeyState yok; klavyenin /dev/input/eventN düğümü okunur. Cihaz "grab"
 // edilmez: tuşlar Hyprland'e ve programlara her zamanki gibi gider, bu süreç yalnızca kopyasını
 // görür. Kodlar fiziksel konumdur (düzenden bağımsız), Türkçe Q / F'de de doğru tuş yanar.
-// Okuma izni için udev kuralı gerekir (linux/70-real67.rules, kur.sh kurar).
+// Okuma izni için udev kuralı gerekir (linux/70-real67.rules, linux/kur.sh kurar).
 const LINUX = process.platform === 'linux';
 const EV_CODE = {
   Escape: [1, 41], Digit1: [2], Digit2: [3], Digit3: [4], Digit4: [5], Digit5: [6], Digit6: [7], Digit7: [8],

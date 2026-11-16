@@ -3,7 +3,7 @@ rem Real67 Studio'yu acar: arka plan servisi + web arayuzu (http://localhost:866
 rem Bu pencere acik kaldigi surece efekt akar. Pencere olmadan calistirmak icin
 rem "arka-planda-baslat.vbs" dosyasini kullanin.
 rem Klasorler:  web-app = arayuz dosyalari,  service = arka plan servisi
-cd /d "%~dp0"
+cd /d "%~dp0.."
 set PORT=8667
 where node >nul 2>nul
 if errorlevel 1 (

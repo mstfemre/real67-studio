@@ -199,10 +199,10 @@ async function main() {
     if (raw) { await sleep(400); process.stdin.setRawMode(false); process.stdin.pause(); }
     // servisi eski haline getir
     if (st) {
-      spawn('wscript', ['arka-planda-baslat.vbs'], { cwd: ROOT, detached: true, stdio: 'ignore' }).unref();
+      spawn('wscript', [path.join('windows', 'arka-planda-baslat.vbs')], { cwd: ROOT, detached: true, stdio: 'ignore' }).unref();
       let up = null; for (let i = 0; i < 40 && !(up = await status()); i++) await sleep(200);
       if (up && resumeCfg) await api('play', resumeCfg).catch(() => {});
-      console.log(up ? `  Servis yeniden başlatıldı${resumeCfg ? ' (' + resumeCfg.fxId + ' sürüyor)' : ''}.` : '  Servis başlatılamadı: web-app-ac.vbs ile elle başlat.');
+      console.log(up ? `  Servis yeniden başlatıldı${resumeCfg ? ' (' + resumeCfg.fxId + ' sürüyor)' : ''}.` : '  Servis başlatılamadı: windows\\web-app-ac.vbs ile elle başlat.');
     }
   }
   if (result.off) { report(result); try { fs.writeFileSync(RESULT_FILE, JSON.stringify(result, null, 1)); } catch { /* yazılamadı */ } }

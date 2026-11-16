@@ -567,8 +567,8 @@ server.on('error', (e) => {
 server.listen(PORT, '127.0.0.1', () => {
   log(`Real67 Studio: http://localhost:${PORT}/  (kapatmak için Ctrl+C)`);
   if (!keysAvailable()) log(process.platform === 'linux'
-    ? `Tuş basışları algılanamıyor (${keysError() || 'klavye bulunamadı'}): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. ./kur.sh ile udev kuralını kurun.`
-    : 'Tuş basışları algılanamıyor (koffi kurulu değil): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. kur.bat ile yeniden kurun.');
+    ? `Tuş basışları algılanamıyor (${keysError() || 'klavye bulunamadı'}): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. linux/kur.sh ile udev kuralını kurun.`
+    : 'Tuş basışları algılanamıyor (koffi kurulu değil): tuş tepkili efektler tepkisiz kalır, kısayollar çalışmaz. windows\\kur.bat ile yeniden kurun.');
   if (persisted.playing) {
     try { play(persisted.playing, 'service'); log('Son efekt sürdürülüyor:', persisted.playing.fxId); }
     catch (e) { persisted.playing = null; persist(); log('Kayıtlı efekt yüklenemedi:', e.message); }

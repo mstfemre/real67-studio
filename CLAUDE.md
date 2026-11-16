@@ -34,8 +34,9 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 ## Linux (Omarchy)
 - `keys.mjs` Linux'ta koffi yerine evdev okur: Real67'nin `/dev/input/eventN` düğümleri `/proc/bus/input/devices`'tan bulunur, grab yok. Kodlar `EV_CODE` tablosunda; kısayollar `VK_TO_EV` ile aynı `hotkeyReader`'dan geçer. Düğümler 2 sn'de bir yeniden aranır.
 - İzinler: `linux/70-real67.rules` (hidraw + input, `uaccess`). Işık arayüzü hidraw'da usagePage 0xFF60 (interface 1).
-- Betikler: `kur.sh`, `ac.sh`, `servisi-durdur.sh`, `kaldir.sh`; servis systemd kullanıcı birimi `real67-studio.service` (kur.sh yazar). Yeniden başlat: `systemctl --user restart real67-studio`.
+- Betikler `linux/` içinde: `kur.sh`, `ac.sh`, `servisi-durdur.sh`, `kaldir.sh`; servis systemd kullanıcı birimi `real67-studio.service` (kur.sh yazar). Yeniden başlat: `systemctl --user restart real67-studio`.
 
 ## Çalıştırma
-- Servisi yeniden başlat: çalışan `node service\service.mjs` sürecini sonlandır, sonra `wscript arka-planda-baslat.vbs`.
+- Servisi yeniden başlat: çalışan `node service\service.mjs` sürecini sonlandır, sonra `wscript windows\arka-planda-baslat.vbs`.
+- Windows betikleri (`.bat`, `.vbs`, `real67.ico`) `windows/` içinde; hepsi proje köküne (bir üst klasör) geçip çalışır.
 - Servis Hive trafiğini görünce kendini duraklatır (`P.paused`).
