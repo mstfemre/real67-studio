@@ -12,3 +12,6 @@ service/servis.log
 
 # test çıktısı (bu bilgisayara özel)
 service/klavye-testi-sonuc.json
+
+# yerel proje notları (Claude Code), GitHub’a gitmez
+CLAUDE.md

@@ -10,8 +10,21 @@ A small background service plays the effects. You can close the browser and the 
 
 > The interface is in Turkish. Effect and setting names are translated in the tables below.
 
+## What's in this repository
+
+Two parts, shared by both platforms, plus an installer folder for each platform:
+
+| Part | Folder | Windows | Linux (Omarchy / Hyprland) |
+|---|---|---|---|
+| **Service:** plays the effects on the keyboard in the background | `service/` | Started at login from the Startup folder; key presses via `GetAsyncKeyState` | systemd user service `real67-studio.service`; key presses via evdev |
+| **Web app:** the interface | `web-app/` | Opens in your default browser | Opens as an Omarchy web app window |
+| **Installer and scripts** | | `windows/` | `linux/` |
+
+The service serves the web app at <http://localhost:8667>, so there is nothing else to install. Clone the repository and run the installer for your platform ([Installation](#installation)).
+
 ## Contents
 
+- [What's in this repository](#whats-in-this-repository)
 - [Why this exists](#why-this-exists)
 - [Features](#features)
 - [Screenshots](#screenshots)
