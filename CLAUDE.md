@@ -31,7 +31,7 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 - Rapid trigger ve tuş atamaları asla bozulmamalı. Kontrol için Hive'ın salt-okunur sorguları kullanılabilir (0x0a 0x97, 0x04 0x80/81/83/85, 0x02 0x80).
 - Rafa kaldırılanlar (kod duruyor, arayüzde yok): Tuş dalgası efekti, Tuş boyama / Klavyeye kaydet / Paket günlüğü sekmeleri, Genel ayarlar kartı.
 
-## Linux (dal: `linux`, Omarchy)
+## Linux (Omarchy)
 - `keys.mjs` Linux'ta koffi yerine evdev okur: Real67'nin `/dev/input/eventN` düğümleri `/proc/bus/input/devices`'tan bulunur, grab yok. Kodlar `EV_CODE` tablosunda; kısayollar `VK_TO_EV` ile aynı `hotkeyReader`'dan geçer. Düğümler 2 sn'de bir yeniden aranır.
 - İzinler: `linux/70-real67.rules` (hidraw + input, `uaccess`). Işık arayüzü hidraw'da usagePage 0xFF60 (interface 1).
 - Betikler: `kur.sh`, `ac.sh`, `servisi-durdur.sh`, `kaldir.sh`; servis systemd kullanıcı birimi `real67-studio.service` (kur.sh yazar). Yeniden başlat: `systemctl --user restart real67-studio`.
@@ -39,8 +39,3 @@ MelGeek Real67 klavye için ışık kontrolü. Kullanıcı Türkçe konuşur; ar
 ## Çalıştırma
 - Servisi yeniden başlat: çalışan `node service\service.mjs` sürecini sonlandır, sonra `wscript arka-planda-baslat.vbs`.
 - Servis Hive trafiğini görünce kendini duraklatır (`P.paused`).
-
-## Masaüstü uygulaması (`desktop/`, Linux)
-- Qt Quick + WebEngine kabuğu (`real67`): `http://localhost:8667/studio/?desktop` adresini saydam pencerede açar. `/studio/` öneki servis tarafından kırpılır; `?desktop` `<html>`'e `desktop` sınıfı ekler (zemin neredeyse tamamen saydam, `styles.css` sonu).
-- Hyprland kuralı `~/.config/hypr/hyprland.lua` → `o.window("^real67$", …)`: döşenen (yüzmez, diğer pencerelerin üstünde durmaz), DP-1, arkası bulanık (Hyprland genel blur ayarı; pencere başına güç ayarlanamıyor). Pencere opaklığı kuralı yok; saydamlık sayfanın kendisinden gelir, yazılar net kalır.
-- Derle/kur: `desktop/bin/build`, `desktop/bin/install` (`~/.local/bin/real67`, başlatıcı girdisi, simge). `ac.sh` kuruluysa bunu açar. Tek örnek: `$XDG_RUNTIME_DIR/real67.lock`.

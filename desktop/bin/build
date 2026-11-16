@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# qmake6 + make ile build/real67 üretir.
-set -euo pipefail
-cd "$(dirname "$0")/.."
-mkdir -p build && cd build
-qmake6 ../real67.pro >/dev/null
-make -j"$(nproc)" >/dev/null
-echo "build/real67"

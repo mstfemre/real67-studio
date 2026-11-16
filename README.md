@@ -1,6 +1,6 @@
 # Real67 Studio
 
-An unofficial lighting controller for the MelGeek **Real67** keyboard. The keyboard's built-in RGB modes are few and limited, so this project adds **39 live effects**, **30 colour palettes**, key-reactive lighting, favourites, hotkeys and ambient (mood) light control.
+An unofficial lighting controller for the MelGeek **Real67** keyboard, for **Windows** and **Linux (Omarchy / Hyprland)**. It runs as a web app in your browser. The keyboard's built-in RGB modes are few and limited, so this project adds **39 live effects**, **30 colour palettes**, key-reactive lighting, favourites, hotkeys and ambient (mood) light control.
 
 A small background service plays the effects. You can close the browser and the lights keep flowing; after a reboot they pick up where they left off.
 
@@ -29,7 +29,7 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 
 1. **Reverse-engineered the protocol.** MelGeek does not publish the keyboard's USB protocol. Capturing and studying the packets Hive sends revealed the lighting commands: writing key colours, setting the lighting mode and brightness, and changing the ambient light.
 2. **Found the firmware's limits.** The keyboard cannot store a custom animation, and its built-in "Wave" and "Gradient" modes ignore the colours you write and play their own rainbow. The only way to get a custom effect is to stream the colours from the computer.
-3. **Wrote a background service.** A small Node.js service computes the effect and writes all 67 key colours to the keyboard about 60 times per second. It opens no window and can start automatically with Windows.
+3. **Wrote a background service.** A small Node.js service computes the effect and writes all 67 key colours to the keyboard about 60 times per second. It opens no window and can start automatically when you log in.
 4. **Wrote a web interface.** The same service serves a single-screen interface at `http://localhost:8667`. Click an effect and it plays on the keyboard. Because the interface talks to the service, it also works in browsers without WebHID (Firefox, Zen).
 5. **Protected the keyboard's settings.** The driver code refuses to send any non-lighting command group. Rapid trigger, actuation point and key-mapping blocks were read before and after lighting operations and stayed byte-for-byte identical. A separate test (`service/klavye-testi.mjs`) measured no effect on 8000 Hz polling or key latency while lights are streaming.
 
@@ -42,7 +42,7 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 - **Hotkeys:** switch effects and change brightness without opening the interface
 - **Ambient light:** colour, mode, speed and brightness, plus automatic colour that follows the playing effect
 - **Runs without a browser:** effects keep playing in the background
-- **Autostart:** the last effect resumes when Windows starts
+- **Autostart:** the last effect resumes when you log in (Windows or Linux)
 - **Plays nicely with Hive:** the service pauses itself when Hive connects to the keyboard
 - The interface takes on the colours of the selected effect
 
@@ -120,7 +120,18 @@ The Real67's official tool, [MelGeek Hive](https://hive.melgeek.com), offers onl
 
 ## Installation
 
-Three steps on a new computer or after a reinstall:
+The same code runs on both platforms. Pick yours:
+
+| | Windows | Linux (Omarchy) |
+|---|---|---|
+| Install | `kur.bat` | `./kur.sh` |
+| Open the interface | Start menu → **Real67 Studio** | App launcher (Super+Space) → **Real67 Studio** |
+| Stop the service | `servisi-durdur.bat` | `./servisi-durdur.sh` |
+| Uninstall | `kaldir.bat` | `./kaldir.sh` |
+
+Both open the same web interface at <http://localhost:8667>.
+
+### Windows
 
 **1. Install Node.js.** Download and install the LTS version from <https://nodejs.org>.
 
@@ -143,9 +154,23 @@ Without Git, use the green **Code** button at the top of this page, choose **Dow
 
 To uninstall, run `kaldir.bat`. It stops the service and removes the shortcuts; it does not delete the folder.
 
+### Linux (Omarchy / Hyprland)
+
+```
+omarchy pkg add nodejs npm    # if Node.js is not installed yet
+git clone https://github.com/mstfemre/real67-studio.git
+cd real67-studio && ./kur.sh
+```
+
+`kur.sh` installs the dependencies, an udev rule (`linux/70-real67.rules`, asks for `sudo`) that lets the logged-in user reach the keyboard without root, a systemd user service (`real67-studio.service`) and a **Real67 Studio** entry in the app launcher (Super+Space). On Omarchy the interface opens as a web app window; elsewhere in your default browser.
+
+Other scripts: `ac.sh` (open the interface), `servisi-durdur.sh` (stop), `kaldir.sh` (uninstall). Autostart: `systemctl --user enable|disable real67-studio`. Log: `journalctl --user -u real67-studio -f`.
+
+Key presses are read from the Real67's own `/dev/input/event*` nodes (evdev). The device is not grabbed, so keys still reach Hyprland and every program; key codes are physical positions, so any layout works. Ctrl+Alt+arrow hotkeys are not used by Omarchy's default bindings. Unlike Windows, presses are also seen on the lock screen. `service/klavye-testi.mjs` is Windows-only.
+
 ## Usage
 
-- Open the interface from the Start menu (**Real67 Studio**) or at <http://localhost:8667>. It works in Chrome, Edge, Firefox and Zen.
+- Open the interface from the Start menu / app launcher (**Real67 Studio**) or at <http://localhost:8667>. It works in Chrome, Edge, Firefox and Zen.
 - Click an effect card; it plays on the keyboard immediately.
 - Speed, brightness, palette and colour changes apply instantly.
 - **★ Favorilere ekle** (*Add to favourites*) saves the effect with its current settings. Click the favourite card above the effect list to play it exactly as saved. Favourites are stored in the browser.
@@ -160,25 +185,12 @@ To uninstall, run `kaldir.bat`. It stops the service and removes the shortcuts; 
 - You can close the browser; the effect keeps playing in the background.
 - When the service is not running or the computer is off, the keyboard shows the lighting stored in its own memory.
 
-## Linux (Omarchy / Hyprland)
-
-The `linux` branch runs the same service on Linux.
-
-```
-git clone -b linux https://github.com/mstfemre/real67-studio.git
-cd real67-studio && ./kur.sh
-```
-
-`kur.sh` installs the dependencies, an udev rule (`linux/70-real67.rules`, asks for `sudo`) that lets the logged-in user reach the keyboard without root, a systemd user service (`real67-studio.service`) and a **Real67 Studio** entry in the app launcher (Super+Space). Other scripts: `ac.sh` (open the interface), `servisi-durdur.sh` (stop), `kaldir.sh` (uninstall). Autostart: `systemctl --user enable|disable real67-studio`. Log: `journalctl --user -u real67-studio -f`.
-
-Key presses are read from the Real67's own `/dev/input/event*` nodes (evdev). The device is not grabbed, so keys still reach Hyprland and every program; key codes are physical positions, so any layout works. Ctrl+Alt+arrow hotkeys are not used by Omarchy's default bindings. Unlike Windows, presses are also seen on the lock screen. `service/klavye-testi.mjs` is Windows-only.
-
 ## Using it alongside MelGeek Hive
 
 Keep using Hive for settings such as rapid trigger and key mapping.
 
 - When Hive (web or desktop) connects to the keyboard, the service notices, pauses itself and restores the keyboard's previous lighting.
-- When you are done with Hive, open **Real67 Studio** from the Start menu or press **Devam et** (*Resume*) in the interface.
+- When you are done with Hive, open **Real67 Studio** from the Start menu / app launcher or press **Devam et** (*Resume*) in the interface.
 - Before a **firmware update**, run `servisi-durdur.bat` (*stop service*) first.
 
 ## How it works
@@ -193,7 +205,7 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 - Every frame, the service computes the colour of all 67 keys and writes them to the keyboard's "Custom 7" colour slot. When it stops, it restores the keyboard's previous lighting mode.
 - Effects live in `web-app/js/effects.js`. The interface previews and the service run the same code; adding an entry to the `EFFECTS` array is all it takes to add an effect.
 - The service listens only on `127.0.0.1:8667`, so other devices on the network cannot reach it. It also rejects requests from other websites.
-- While a key-reactive effect is playing, the service asks Windows which keys are down (`GetAsyncKeyState`, `service/keys.mjs`). No keyboard hook is installed. Key presses are used only to light that frame; they are never recorded or sent anywhere. While other effects play, only the hotkey keys (Ctrl, Alt, arrows) are checked.
+- While a key-reactive effect is playing, the service asks Windows which keys are down (`GetAsyncKeyState`, `service/keys.mjs`); on Linux it reads the Real67's evdev nodes. No keyboard hook is installed and nothing is grabbed. Key presses are used only to light that frame; they are never recorded or sent anywhere. While other effects play, only the hotkey keys (Ctrl, Alt, arrows) are checked.
 
 ## Files
 
@@ -206,6 +218,8 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 | `start.bat` | Starts the service in a visible window (for debugging) |
 | `servisi-durdur.bat` | Stops the service; the keyboard returns to its previous lighting |
 | `otomatik-baslat-ac.bat` / `-kapat.bat` | Turns starting with Windows on / off |
+| `kur.sh`, `ac.sh`, `servisi-durdur.sh`, `kaldir.sh` | Linux: install, open, stop, uninstall |
+| `linux/` | Linux udev rule and launcher icon |
 | `web-app/` | Interface (HTML, CSS, JS), effects and protocol code |
 | `service/` | Background service (Node.js + node-hid; koffi for key presses) |
 | `service/klavye-testi.mjs` | Measures whether light streaming affects 8K polling or latency: `node service/klavye-testi.mjs` |
@@ -214,7 +228,7 @@ Browser (interface)  ──HTTP──▶  Service (Node.js)  ──USB HID──
 ## Limitations
 
 - Tested only with the MelGeek Real67 (67 keys).
-- Windows, plus Linux on the `linux` branch (see above).
+- Runs on Windows and Linux (tested on Omarchy / Hyprland). macOS is not supported.
 - Effects are streamed from the computer, so they do not play while the service is stopped; the firmware cannot store a custom animation.
 - The firmware accepts only 8 preset colours for the ambient light.
 - Key presses and hotkeys are not detected while Windows is on the lock screen.
